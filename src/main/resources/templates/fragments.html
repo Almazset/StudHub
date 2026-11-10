@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="head(pageTitle)">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="_csrf" th:content="${_csrf.token}">
+  <meta name="_csrf_header" th:content="${_csrf.headerName}">
+  <title th:text="${pageTitle} + ' · StudHub'">StudHub</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/img/studhub-mark.svg}">
+  <link rel="stylesheet" th:href="@{/css/vendor/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/css/vendor/bootstrap-icons.min.css}">
+  <link rel="stylesheet" th:href="@{/css/fonts.css}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <link rel="stylesheet" th:href="@{/css/calendar.css}">
+  <link rel="stylesheet" th:href="@{/css/focus.css}">
+  <link rel="stylesheet" th:href="@{/css/settings.css}">
+  <link rel="stylesheet" th:href="@{/css/assistant.css}">
+  <link rel="stylesheet" th:href="@{/css/chat.css}">
+  <link rel="stylesheet" th:href="@{/css/projects.css}">
+  <link rel="stylesheet" th:href="@{/css/motion.css}">
+  <link rel="stylesheet" th:href="@{/css/themes.css}">
+  <link rel="stylesheet" th:href="@{/css/news.css}">
+</th:block>
+
+<a th:fragment="skip" class="skip-link" href="#main-content" th:text="#{nav.skip}">Перейти к содержимому</a>
+
+<aside th:fragment="sidebar" class="sidebar" id="appSidebar" th:aria-label="#{nav.primary}">
+  <div class="sidebar-brand-row">
+    <a class="brand" th:href="@{/}" th:aria-label="#{app.name} + ' — ' + #{nav.dashboard}">
+      <span class="brand-mark">S</span><span class="brand-name" th:text="#{app.name}">StudHub</span>
+    </a>
+    <button class="sidebar-collapse" type="button" data-sidebar-collapse th:aria-label="#{nav.collapse}" aria-expanded="true" th:title="#{nav.collapse}"><i class="bi bi-layout-sidebar-inset"></i></button>
+    <button class="mobile-close" type="button" data-drawer-close th:aria-label="#{action.close}"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link" data-nav="/news" th:href="@{/news}" aria-label="Новости" title="Новости"><i class="bi bi-newspaper"></i><span>Новости</span></a>
+    <p class="sidebar-label" th:text="#{nav.workspace}">Рабочее пространство</p>
+    <a class="sidebar-link" data-nav="/" th:href="@{/}" th:aria-label="#{nav.dashboard}" th:title="#{nav.dashboard}"><i class="bi bi-grid-1x2"></i><span th:text="#{nav.dashboard}">Личный кабинет</span></a>
+    <a class="sidebar-link" data-nav="/courses" th:href="@{/courses}" th:aria-label="#{nav.courses}" th:title="#{nav.courses}"><i class="bi bi-journals"></i><span th:text="#{nav.courses}">Курсы</span></a>
+    <a class="sidebar-link" data-nav="/assignments" th:href="@{/assignments}" th:aria-label="#{nav.assignments}" th:title="#{nav.assignments}"><i class="bi bi-check2-square"></i><span th:text="#{nav.assignments}">Задания</span></a>
+    <a class="sidebar-link" data-nav="/projects" th:href="@{/projects}" aria-label="Проекты" title="Проекты"><i class="bi bi-folder"></i><span>Проекты</span></a>
+    <a class="sidebar-link" data-nav="/users" th:if="${currentUser != null and currentUser.role.name() == 'ADMIN'}" th:href="@{/users}" th:aria-label="#{nav.users}" th:title="#{nav.users}"><i class="bi bi-people"></i><span th:text="#{nav.users}">Пользователи</span></a>
+    <a class="sidebar-link" data-nav="/chat" th:href="@{/chat}" aria-label="Чат" title="Чат" data-chat-nav><i class="bi bi-chat-dots"></i><span>Чат</span></a>
+    <p class="sidebar-label sidebar-label-secondary" th:text="#{nav.system}">Система</p>
+    <a class="sidebar-link" th:href="@{/swagger-ui.html}" target="_blank" rel="noopener" th:aria-label="#{nav.api}" th:title="#{nav.api}"><i class="bi bi-braces-asterisk"></i><span th:text="#{nav.api}">API документация</span><i class="bi bi-box-arrow-up-right sidebar-external"></i></a>
+  </nav>
+</aside>
+
+<header th:fragment="topbar(pageTitle)" class="topbar">
+  <div class="topbar-left">
+    <button class="mobile-menu" type="button" data-drawer-open aria-controls="appSidebar" aria-expanded="false" th:aria-label="#{nav.open}"><i class="bi bi-list"></i></button>
+    <div><div class="breadcrumb-line"><a th:href="@{/}" th:text="#{nav.dashboard}">Обзор</a><i class="bi bi-chevron-right"></i><span th:text="${pageTitle}">Страница</span></div><h1 class="topbar-title" th:text="${pageTitle}">Страница</h1></div>
+  </div>
+  <div class="topbar-actions">
+    <div class="topbar-tool">
+      <button class="icon-button" type="button" data-panel-trigger="search" aria-controls="topbarSearch" aria-expanded="false" th:aria-label="#{action.search}" th:title="#{action.search}"><i class="bi bi-search"></i></button>
+      <div class="topbar-popover search-popover" id="topbarSearch" data-panel="search" hidden>
+        <h2 th:text="#{topbar.searchTitle}">Поиск</h2>
+        <form class="global-search-form" th:action="@{/assignments}" method="get"><label for="globalSearch" th:text="#{topbar.searchHint}">Поиск по заданиям и курсам</label><input id="globalSearch" name="search" type="search" autocomplete="off" required th:placeholder="#{topbar.searchPlaceholder}"><div class="global-search-actions"><button type="submit" th:text="#{topbar.searchAssignments}">В заданиях</button><button type="submit" th:formaction="@{/courses}" th:text="#{topbar.searchCourses}">В курсах</button></div></form>
+      </div>
+    </div>
+    <div class="topbar-tool">
+      <button class="icon-button notification-trigger" type="button" data-panel-trigger="notifications" aria-controls="topbarNotifications" aria-expanded="false" th:aria-label="#{topbar.notifications}" th:title="#{topbar.notifications}"><i class="bi bi-bell"></i><span class="notification-dot" th:if="${!#lists.isEmpty(deadlineAlerts)}"></span></button>
+      <div class="topbar-popover notification-popover" id="topbarNotifications" data-panel="notifications" hidden>
+        <div class="popover-heading"><h2 th:text="#{topbar.notifications}">Уведомления</h2><a th:href="@{/assignments}" th:text="#{dashboard.deadlinesAll}">Все задания</a></div>
+        <p class="popover-empty" th:if="${#lists.isEmpty(deadlineAlerts)}" th:text="#{topbar.noNotifications}">Ближайших дедлайнов нет.</p>
+        <a class="notification-item" th:each="a : ${deadlineAlerts}" th:href="@{/assignments/{id}/edit(id=${a.id})}"><span class="notification-icon"><i class="bi bi-calendar-event"></i></span><span><strong th:text="${a.title}">Задание</strong><small><span th:text="${a.course.title}">Курс</span> · <time th:datetime="${a.dueDate}" th:text="${#temporals.format(a.dueDate, 'd MMM')}">25 окт.</time></small></span></a>
+      </div>
+    </div>
+    <div class="topbar-tool">
+      <button class="icon-button" type="button" data-panel-trigger="settings" aria-controls="topbarSettings" aria-expanded="false" th:aria-label="#{topbar.settings}" th:title="#{topbar.settings}"><i class="bi bi-gear"></i></button>
+      <div class="topbar-popover settings-popover" id="topbarSettings" data-panel="settings" hidden><h2 th:text="#{topbar.settings}">Настройки</h2><button class="popover-action theme-toggle" type="button" data-theme-toggle><i class="bi bi-moon-stars"></i><span th:text="#{theme.toggle}">Переключить тему</span></button><a class="popover-action" th:href="@{/profile}"><i class="bi bi-person"></i><span th:text="#{profile.title}">Настройки профиля</span></a><form class="settings-logout" data-settings-logout th:if="${currentUser != null}" th:action="@{/logout}" method="post"><button class="popover-action" type="submit"><i class="bi bi-box-arrow-left"></i><span th:text="#{nav.logout}">Выйти</span></button></form></div>
+    </div>
+    <a class="topbar-profile" th:if="${currentUser != null}" th:href="@{/profile}" th:title="#{profile.title}">
+      <span class="avatar" data-profile-avatar><img th:if="${currentUser.hasPhoto}" th:src="@{/api/settings/photo}" alt=""><span th:unless="${currentUser.hasPhoto}" th:text="${currentUser.displayName.substring(0,1).toUpperCase()}">A</span></span>
+      <span class="topbar-profile-name" data-profile-name th:text="${currentUser.displayName}">Пользователь</span>
+      <span class="visually-hidden" th:text="#{profile.title}">Профиль</span>
+    </a>
+  </div>
+</header>
+
+<div th:fragment="toastRegion" class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="false"></div>
+
+<section th:fragment="studyAssistant" class="study-assistant" data-study-assistant aria-label="Помощник StudHub">
+  <button type="button" class="assistant-launcher" data-assistant-open aria-label="Открыть ИИ-ассистента"><i class="bi bi-stars"></i><span>StudHub AI</span></button>
+  <noscript>Для учебного помощника включите JavaScript.</noscript>
+</section>
+
+<div th:fragment="messages" id="uiMessages" hidden
+  th:attr="data-toast-saved=#{toast.saved},data-toast-deleted=#{toast.deleted},data-toast-error=#{toast.error},data-toast-close=#{action.close},data-action-edit=#{action.edit},data-action-delete=#{action.delete},data-password-show=#{common.showPassword},data-password-hide=#{common.hidePassword},data-password-weak=#{auth.passwordWeak},data-password-length=#{auth.passwordLength},data-password-mismatch=#{auth.passwordMismatch},data-password-ok=#{auth.passwordStrengthOk},data-password-strong=#{auth.passwordStrengthStrong},data-relative-today=#{assignments.relativeToday},data-relative-tomorrow=#{assignments.relativeTomorrow},data-relative-days=#{assignments.relativeDays},data-relative-ago=#{common.daysAgo},data-role-user=#{common.user},data-role-admin=#{common.admin},data-users-actions=#{common.actions},data-users-new=#{users.modalNew},data-users-edit=#{users.modalEdit},data-users-save-success=#{users.saveSuccess},data-users-delete-success=#{users.deleteSuccess},data-users-delete-confirm=#{users.deleteConfirm},data-users-request-error=#{users.requestError},data-users-self-delete=#{users.currentAccount},data-course-delete-template=#{courses.confirmDelete},data-assignment-delete-template=#{assignments.confirmDelete}"></div>
+
+<footer th:fragment="footer" class="app-footer"><span th:text="#{app.footer}">StudHub · Ваше пространство для развития</span></footer>
+
+<div th:fragment="scripts" class="app-scripts">
+  <th:block th:replace="~{fragments :: studyAssistant}"></th:block>
+  <th:block th:replace="~{fragments :: messages}"></th:block>
+  <script th:src="@{/js/vendor/bootstrap.bundle.min.js}" defer></script>
+  <script th:src="@{/js/settings-i18n.js}" defer></script>
+  <script th:src="@{/js/app.js}" defer></script>
+  <script th:src="@{/js/settings.js}" defer></script>
+  <script th:src="@{/js/assistant-copy.js}" defer></script>
+  <script th:src="@{/js/assistant-guide.js}" defer></script>
+  <script th:src="@{/js/assistant.js}" defer></script>
+  <script th:src="@{/js/chat-copy.js}" defer></script>
+  <script th:src="@{/js/chat.js}" defer></script>
+  <script th:src="@{/js/projects.js}" defer></script>
+  <script th:src="@{/js/reveal.js}" defer></script>
+</div>
+</body>
+</html>

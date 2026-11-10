@@ -1,0 +1,40 @@
+(() => {
+  'use strict';
+  const copy = {
+    title:['Чат','Chat','Чат'], subtitle:['Обсуждайте учёбу и делитесь полезным.','Study together. Share what helps.','Бірге оқып, пайдалы ақпаратпен бөлісіңіз.'],
+    newChat:['Новый чат','New chat','Жаңа чат'], all:['Все','All','Барлығы'], direct:['Личные','Direct','Жеке'], groups:['Группы','Groups','Топтар'],
+    global:['Общий чат StudHub','StudHub community','StudHub ортақ чаты'], globalHint:['Видят все пользователи StudHub','Visible to all StudHub users','Барлық StudHub пайдаланушысына көрінеді'],
+    searchChats:['Найти переписку','Find a conversation','Әңгімелесуді табу'], emptyList:['Переписок пока нет. Начните новый чат.','No conversations yet. Start a new chat.','Әзірге әңгімелесу жоқ. Жаңа чат бастаңыз.'],
+    noMatches:['Ничего не найдено','No matches','Ештеңе табылмады'], choose:['Выберите переписку','Choose a conversation','Әңгімелесуді таңдаңыз'],
+    chooseHint:['Напишите одногруппнику, соберите команду или загляните в общий чат.','Message a classmate, bring a team together or join the community.','Курстасыңызға жазыңыз, топ құрыңыз немесе ортақ чатқа кіріңіз.'],
+    demo:['Предпросмотр: сообщения сохраняются только в этом браузере. Другие пользователи их не получают.','Preview: messages are saved only in this browser. They are not delivered to other users.','Алдын ала қарау: хабарламалар тек осы браузерде сақталады. Басқа пайдаланушыларға жіберілмейді.'],
+    message:['Сообщение','Message','Хабарлама'], placeholder:['Напишите сообщение или поделитесь ссылкой…','Write a message or share a link…','Хабарлама жазыңыз немесе сілтеме жіберіңіз…'],
+    send:['Отправить','Send','Жіберу'], sending:['Отправляем…','Sending…','Жіберілуде…'], sent:['Сообщение отправлено','Message sent','Хабарлама жіберілді'],
+    hint:['Enter — отправить · Shift+Enter — новая строка','Enter to send · Shift+Enter for a new line','Enter — жіберу · Shift+Enter — жаңа жол'],
+    start:['Начните разговор','Start the conversation','Әңгімені бастаңыз'], startHint:['Поделитесь вопросом, идеей или учебным материалом.','Share a question, an idea or a study resource.','Сұрақ, идея немесе оқу материалымен бөлісіңіз.'],
+    older:['Предыдущие сообщения','Earlier messages','Алдыңғы хабарламалар'], newest:['К новым сообщениям ↓','New messages ↓','Жаңа хабарламаларға ↓'],
+    loading:['Загружаем…','Loading…','Жүктелуде…'], retry:['Повторить','Retry','Қайталау'], back:['К списку чатов','Back to chats','Чаттар тізіміне'],
+    members:['Участники','Members','Қатысушылар'], member:['Участник №','Member #','Қатысушы №'], you:['Вы','You','Сіз'], owner:['Создатель','Owner','Құрушы'],
+    personal:['Личная переписка','Private conversation','Жеке әңгімелесу'], group:['Группа','Group','Топ'], count:['участников','members','қатысушы'],
+    privateHint:['Сообщения видны только вам и собеседнику.','Only you and your conversation partner can see these messages.','Хабарламаларды тек сіз және сұхбаттасыңыз көреді.'],
+    groupHint:['Переписка доступна участникам группы. Новые участники видят её историю.','Group members can read this conversation. New members can see its history.','Әңгімелесуді топ мүшелері көреді. Жаңа мүшелерге тарихы қолжетімді.'],
+    newDirect:['Личное сообщение','Direct message','Жеке хабарлама'], newGroup:['Создать группу','Create group','Топ құру'],
+    name:['Название группы','Group name','Топ атауы'], namePlaceholder:['Например, подготовка к экзамену','For example, exam preparation','Мысалы, емтиханға дайындық'],
+    searchPeople:['Поиск по имени','Search by name','Аты бойынша іздеу'], peopleHint:['В поиске видны открытые профили. Чтобы вас находили по имени, выберите «Участники StudHub» в настройках приватности.','Search shows public member profiles. Choose “StudHub members” in privacy settings to be found by name.','Іздеуде ашық профильдер көрінеді. Атыңызбен табылу үшін құпиялық баптауында «StudHub қатысушылары» таңдаңыз.'],
+    selected:['Выбрано','Selected','Таңдалды'], startChat:['Начать переписку','Start chatting','Хат алмасуды бастау'], create:['Создать группу','Create group','Топ құру'],
+    cancel:['Отмена','Cancel','Бас тарту'], close:['Закрыть','Close','Жабу'], add:['Добавить участников','Add members','Қатысушылар қосу'], save:['Добавить','Add','Қосу'],
+    leave:['Выйти из группы','Leave group','Топтан шығу'], leaveHint:['После выхода переписка будет недоступна. Если вы создатель, управление перейдёт другому участнику.','You will lose access to this conversation. If you own the group, ownership passes to another member.','Шыққаннан кейін әңгімелесу қолжетімсіз болады. Құрушы болсаңыз, басқару басқа қатысушыға өтеді.'],
+    updated:['Обновляется автоматически','Updates automatically','Автоматты жаңартылады'], unread:['непрочитанных','unread','оқылмаған'],
+    LOGIN:['Сеанс завершён. Войдите снова. Текст сообщения остаётся в поле.','Your session expired. Sign in again. Your message stays in the input.','Сеанс аяқталды. Қайта кіріңіз. Мәтін енгізу өрісінде қалады.'],
+    NETWORK:['Нет связи с сервером. Проверьте подключение и повторите.','Cannot reach the server. Check your connection and retry.','Сервермен байланыс жоқ. Қосылымды тексеріп, қайталаңыз.'],
+    NOT_FOUND:['Переписка недоступна: возможно, вы больше не участник.','Conversation unavailable. You may no longer be a member.','Әңгімелесу қолжетімсіз. Топ мүшесі болмауыңыз мүмкін.'],
+    OWNER_ONLY:['Добавлять участников может создатель группы.','Only the group owner can add members.','Қатысушыларды тек топ құрушысы қоса алады.'],
+    MEMBER_UNAVAILABLE:['Участник недоступен или скрыл профиль. Обновите поиск.','A member is unavailable or has hidden their profile. Search again.','Қатысушы қолжетімсіз немесе профилін жасырған. Қайта іздеңіз.'],
+    ROOM_LIMIT:['Достигнут предел: 100 переписок на участника.','The limit is 100 conversations per member.','Бір қатысушыға 100 әңгімелесу шегіне жетті.'],
+    MEMBER_LIMIT:['В группе может быть до 30 участников.','A group can have up to 30 members.','Топта 30 қатысушыға дейін болуы мүмкін.'],
+    RATE_LIMIT:['Слишком много сообщений. Подождите минуту.','Too many messages. Please wait a minute.','Хабарламалар тым көп. Бір минут күтіңіз.'],
+    VALIDATION:['Проверьте заполненные поля. Сообщение — до 4000 символов.','Check the fields. Messages can contain up to 4000 characters.','Өрістерді тексеріңіз. Хабарлама 4000 таңбаға дейін.'],
+    STORAGE:['Не удалось сохранить демонстрацию в браузере.','Could not save the preview in this browser.','Алдын ала қарауды браузерде сақтау мүмкін болмады.']
+  };
+  window.StudHubChatCopy = key => copy[key]?.[['ru','en','kk'].indexOf(window.StudHubI18n?.language || 'ru')] || copy[key]?.[0] || key;
+})();

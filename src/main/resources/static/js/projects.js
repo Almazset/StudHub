@@ -1,0 +1,68 @@
+(() => {
+  'use strict';
+  const preview = location.pathname.endsWith('studhub-preview.html');
+  const key = 'studhub-preview-projects-v1';
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let root, projects = [];
+  const projectUrl = mode => preview ? `#projects${mode ? '-' + mode : ''}` : `/projects${mode ? '#' + mode : ''}`;
+  const link = (mode, label, icon) => `<a class="quick-action" href="${projectUrl(mode)}" ${preview ? `data-preview-route="projects-${mode}"` : ''}><i class="bi bi-${icon}"></i><span>${label}</span><i class="bi bi-chevron-right"></i></a>`;
+  function dashboard() {
+    const main=document.querySelector('#main-content');
+    if(document.body.dataset.page !== 'dashboard' || main.querySelector('.quick-actions')) return;
+    const section=document.createElement('section'); section.className='surface quick-actions';
+    section.innerHTML=`<h3>Быстрые действия</h3><div class="quick-actions-list">${link('new','Создать проект','folder-plus')}<a class="quick-action" href="${preview ? '#assignment-new' : '/assignments/new'}" ${preview ? 'data-preview-route="assignment-new"' : ''}><i class="bi bi-check2-square"></i><span>Создать задачу</span><i class="bi bi-chevron-right"></i></a>${link('members','Добавить участника','person-plus')}</div>`;
+    main.querySelector('.stats-grid')?.insertAdjacentElement('afterend',section);
+  }
+  const demoLoad = () => { try { const value=JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(value) ? value : []; } catch { return []; } };
+  const demoSave = rows => localStorage.setItem(key,JSON.stringify(rows));
+  async function api(path='', method='GET', body) {
+    if(preview) {
+      let rows=demoLoad();
+      if(path==='/users') return [{id:2,name:'Мария Садыкова'},{id:3,name:'Данияр Омаров'},{id:4,name:'Алия Садыкова'}].filter(p=>p.name.toLowerCase().includes(body.query.toLowerCase()));
+      if(method==='GET') return rows;
+      if(path==='') { const p={id:Date.now(),title:body.title.trim(),description:body.description.trim(),owner:true,members:[{id:1,name:localStorage.getItem('studhub-preview-name') || 'Алмаз'}]}; rows.unshift(p); demoSave(rows); return p; }
+      const p=rows.find(p=>p.id===Number(path)); if(!p) throw Error('Проект не найден.');
+      if(!p.members.some(m=>m.id===body.userId)) p.members.push(body.person); demoSave(rows); return p;
+    }
+    const headers={}; if(body) headers['Content-Type']='application/json';
+    const token=document.querySelector('meta[name="_csrf"]')?.content, name=document.querySelector('meta[name="_csrf_header"]')?.content;
+    if(token && name) headers[name]=token;
+    const url=path==='/users' ? `/api/chat/users?q=${encodeURIComponent(body.query)}` : `/api/projects${path}`;
+    const response=await fetch(url,{method:path==='/users' ? 'GET' : method,credentials:'same-origin',headers,body:body && path!=='/users' ? JSON.stringify(body) : undefined});
+    if(!response.ok || response.redirected) throw Error('Не удалось выполнить действие. Проверьте соединение и повторите попытку.');
+    return response.json();
+  }
+  function draw(mode='') {
+    if(!root?.isConnected) return;
+    root.innerHTML=`<div class="project-page"><div class="project-heading"><div><p class="eyebrow">STUDHUB</p><h2>Проекты</h2><p class="muted-copy">Создавайте проекты и собирайте участников.</p></div><button class="btn btn-primary" type="button" data-project-new><i class="bi bi-plus-lg"></i> Создать проект</button></div>${preview ? '<p class="settings-demo-note">Предпросмотр: проекты сохраняются только в этом браузере.</p>' : ''}<p class="project-error" role="alert" hidden></p><section class="surface project-form" ${mode==='new' ? '' : 'hidden'}><h3>Новый проект</h3><form data-project-form><label>Название проекта<input name="title" required maxlength="120"></label><label>Описание<textarea name="description" maxlength="1000" rows="3"></textarea></label><div><button class="btn btn-primary" type="submit">Создать проект</button> <button class="btn btn-light" type="button" data-project-cancel>Отмена</button></div></form></section><div data-project-list>${projects.length ? projects.map(p=>`<section class="surface project-card"><h3>${esc(p.title)}</h3><p>${esc(p.description || 'Описание не добавлено')}</p><strong>Участники · ${p.members.length}</strong><div class="project-members">${p.members.map(m=>`<span>${esc(m.name)}</span>`).join('')}</div>${p.owner ? `<details class="project-add" ${mode==='members' ? 'open' : ''}><summary>Добавить участника</summary><form data-project-search="${p.id}"><input name="query" minlength="2" maxlength="80" required placeholder="Имя или никнейм" aria-label="Имя или никнейм"><button class="btn btn-light" type="submit">Найти</button></form><div data-project-results="${p.id}"></div></details>` : ''}</section>`).join('') : '<section class="surface project-card"><p>Проектов пока нет. Создайте первый проект, чтобы добавить участников.</p></section>'}</div></div>`;
+  }
+  async function mount(mode='') {
+    root=document.querySelector('[data-project-root]'); if(!root) return;
+    root.innerHTML='<p>Загружаем проекты…</p>';
+    try { projects=await api(); draw(mode); } catch(error) { root.textContent=error.message; }
+  }
+  document.addEventListener('click',async event=>{
+    if(!root?.isConnected) return;
+    if(event.target.closest('[data-project-new]')) { draw('new'); root.querySelector('[name="title"]')?.focus(); }
+    if(event.target.closest('[data-project-cancel]')) draw();
+    const button=event.target.closest('[data-project-add]');
+    if(button) {
+      button.disabled=true;
+      try { const person=JSON.parse(button.dataset.person); await api(preview ? button.dataset.project : `/${button.dataset.project}/members`,'POST',{userId:person.id,person}); projects=await api(); draw('members'); }
+      catch(error) { const box=root.querySelector('.project-error'); box.hidden=false; box.textContent=error.message; button.disabled=false; }
+    }
+  });
+  document.addEventListener('submit',async event=>{
+    const form=event.target.closest('[data-project-form],[data-project-search]'); if(!form || !root?.contains(form)) return;
+    event.preventDefault(); const button=form.querySelector('button'); button.disabled=true;
+    try {
+      if(form.hasAttribute('data-project-form')) { const values=Object.fromEntries(new FormData(form)); if(!values.title.trim()) throw Error('Укажите название проекта.'); await api('','POST',values); projects=await api(); draw(); }
+      else { const people=await api('/users','GET',{query:form.elements.query.value.trim()}); const project=projects.find(p=>String(p.id)===form.dataset.projectSearch); const matches=people.filter(p=>!project.members.some(m=>m.id===p.id)); const results=root.querySelector(`[data-project-results="${form.dataset.projectSearch}"]`); results.innerHTML=matches.length ? matches.map(p=>`<button class="btn btn-light" type="button" data-project-add data-project="${project.id}" data-person="${esc(JSON.stringify(p))}">${esc(p.name)} · Добавить</button>`).join(' ') : '<p>Участники не найдены. Поиск доступен по открытым профилям.</p>'; }
+    } catch(error) { const box=root.querySelector('.project-error'); box.hidden=false; box.textContent=error.message; }
+    finally { if(button.isConnected) button.disabled=false; }
+  });
+  window.StudHubProjects={mount,dashboard}; dashboard();
+  document.addEventListener('studhub:preview-reset', () => { if(preview) localStorage.removeItem(key); });
+  if(preview && /^#projects(?:-(new|members))?$/.test(location.hash)) window.previewBaseRender(location.hash.slice(1));
+  if(document.querySelector('[data-project-root]')) mount(location.hash.slice(1));
+})();

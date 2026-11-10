@@ -1,0 +1,8 @@
+target/
+.studhub/
+.env
+.env.*
+!.env.example
+.m2/
+
+.vs/

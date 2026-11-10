@@ -1,0 +1,14 @@
+package kz.studhub.assistant;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import java.util.List;
+
+public record AssistantMessage(
+        @NotNull @Pattern(regexp="summary|explain|tasks") String mode,
+        @NotNull @Size(max=6000) String message,
+        @NotNull @Pattern(regexp="ru|en|kk") String language,
+        @NotNull @Size(max=8) List<@NotNull @Valid Turn> history) {
+    public record Turn(@NotNull @Pattern(regexp="user|assistant") String role,
+                       @NotBlank @Size(max=6000) String text) {}
+}

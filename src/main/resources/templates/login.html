@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head><th:block th:replace="~{fragments :: head(#{page.login})}"></th:block><link rel="stylesheet" th:href="@{/css/auth.css}"><script th:src="@{/js/auth-theme.js}"></script></head>
+<body class="auth-page auth-refined" data-page="login">
+<button class="auth-theme-toggle" type="button" data-theme-toggle aria-label="Сменить тему" aria-pressed="false"><i class="bi bi-moon-stars" aria-hidden="true"></i><span>Тёмная тема</span></button>
+<main class="auth-layout" id="main-content">
+  <section class="auth-content"><div class="auth-card" th:classappend="${param.error} ? ' shake-once' : ''"><a class="auth-identity" th:href="@{/login}" aria-label="StudHub"><span class="auth-logo" aria-hidden="true">S<span></span></span><span class="auth-wordmark">StudHub</span></a><h1 th:text="#{auth.loginTitle}">С возвращением</h1><p class="muted-copy" th:text="#{auth.loginSubtitle}">Войдите в свой учебный кабинет</p>
+    <div class="alert alert-success auth-alert" role="status" th:if="${param.registered}" th:text="#{auth.registered}">Аккаунт создан. Теперь войдите.</div><div class="alert alert-danger auth-alert" role="alert" th:if="${param.error}" th:text="#{auth.error}">Неверный email или пароль.</div><div class="alert alert-success auth-alert" role="status" th:if="${param.logout}" th:text="#{auth.logout}">Вы вышли из системы.</div>
+    <div class="alert alert-success auth-alert" role="status" th:if="${param.updated}">Данные изменены. Войдите с новым email.</div>
+    <div class="alert auth-alert" role="status" th:if="${param.expired}">Сеанс завершён. Войдите снова.</div>
+    <form th:action="@{/login}" method="post" data-submit-loading>
+      <div class="field-group"><label for="username" th:text="#{common.email}">Электронная почта</label><div class="auth-input"><i class="bi bi-envelope" aria-hidden="true"></i><input id="username" name="username" type="email" required maxlength="120" autocomplete="email" placeholder="name@example.com"></div></div>
+      <div class="field-group"><label for="password" th:text="#{common.password}">Пароль</label><div class="password-wrap auth-input"><i class="bi bi-lock" aria-hidden="true"></i><input id="password" name="password" type="password" required autocomplete="current-password" placeholder="Введите пароль"><button class="password-toggle" type="button" data-password-toggle="password" th:aria-label="#{common.showPassword}" th:title="#{common.showPassword}"><i class="bi bi-eye"></i></button></div></div>
+      <details class="auth-two-factor"><summary><i class="bi bi-shield-lock" aria-hidden="true"></i> Двухфакторная защита <i class="bi bi-chevron-down" aria-hidden="true"></i></summary><div class="field-group"><label for="loginCode">Код из аутентификатора или резервный код</label><input id="loginCode" name="code" type="text" autocomplete="one-time-code" maxlength="32"><small class="field-hint">Заполните, если включена двухфакторная защита.</small></div></details>
+      <button class="btn btn-primary btn-auth" type="submit"><span class="button-label" th:text="#{auth.signIn}">Войти</span><span class="spinner-border spinner-border-sm d-none" aria-hidden="true"></span></button>
+    </form><p class="auth-switch"><span th:text="#{auth.noAccount}">Нет аккаунта?</span> <a th:href="@{/register}" th:text="#{auth.createAccount}">Создать аккаунт</a></p>
+  </div></section>
+</main><th:block th:replace="~{fragments :: toastRegion}"></th:block><th:block th:replace="~{fragments :: scripts}"></th:block>
+</body></html>

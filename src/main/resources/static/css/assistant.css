@@ -1,0 +1,83 @@
+.study-assistant { pointer-events: none; }
+.study-assistant>button, .study-assistant>.assistant-panel { pointer-events: auto; }
+.study-assistant .tutor-panel { width: min(620px,calc(100vw - 48px)); height: min(780px,calc(100dvh - 112px)); border-radius: 20px; color: var(--ink); border-color: var(--border); box-shadow: 0 16px 60px #0003; }
+.study-assistant .tutor-expanded { width: min(900px,calc(100vw - 48px)); }
+.tutor-panel .assistant-header { padding: 14px 16px; gap: 10px; flex: none; }
+.tutor-panel .assistant-header>div { min-width: 0; }
+.tutor-panel .assistant-header strong, .tutor-panel .assistant-header small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tutor-panel .assistant-header strong { color: var(--ink); font-size: 15px; }
+.tutor-panel .assistant-header small { color: var(--muted); }
+.tutor-panel .assistant-avatar { background: var(--surface-soft); color: var(--ink); flex: none; }
+.tutor-panel .assistant-close { background: var(--surface-soft); color: var(--ink); flex: none; }
+.tutor-panel .assistant-close:hover { background: var(--border); }
+.tutor-modes { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; flex: none; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.tutor-modes button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--muted); font-size: 12px; line-height: 1.3; }
+.tutor-modes button[aria-selected="true"] { color: var(--ink); border-color: var(--border); background: var(--surface-soft); font-weight: 600; }
+.tutor-modes button:hover { color: var(--ink); }
+.tutor-connection { padding: 9px 16px; background: var(--surface-soft); color: var(--muted); font-size: 11px; line-height: 1.5; flex: none; }
+.tutor-context { padding: 12px 16px 8px; max-height: 170px; overflow-y: auto; flex: none; }
+.tutor-context>p { margin: 0 0 10px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.tutor-upload { padding: 9px 12px; border: 1px dashed var(--border); border-radius: 10px; font-size: 11px; color: var(--muted); }
+.tutor-upload.is-dragging { border-color: var(--ink); background: var(--surface-soft); }
+.tutor-upload:has(input:focus-visible) { outline: 3px solid var(--muted); outline-offset: 2px; }
+.tutor-upload-button { display: inline-flex; gap: 6px; align-items: center; margin-right: 6px; font-size: 12px; color: var(--ink); font-weight: 600; cursor: pointer; }
+.tutor-upload>small { display: block; margin-top: 4px; line-height: 1.5; }
+.tutor-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tutor-file { display: flex; max-width: 100%; align-items: center; gap: 6px; padding: 5px 8px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; color: var(--ink); }
+.tutor-file>span { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tutor-file>small { white-space: nowrap; color: var(--muted); }
+.tutor-file button { flex: none; width: 26px; height: 26px; background: transparent; color: var(--muted); border: 0; font-size: 18px; }
+.tutor-panel .assistant-messages { flex: 1; min-height: 72px; gap: 14px; padding: 14px 16px; overflow-y: auto; overflow-x: hidden; }
+.tutor-panel .assistant-message { max-width: 94%; flex: none; font-size: calc(13px * var(--studhub-text-scale,1)); line-height: 1.6; overflow-wrap: anywhere; }
+.tutor-panel .user-message { background: var(--primary); color: var(--page); }
+.tutor-message-label { display: block; margin-bottom: 5px; opacity: .65; font-size: 10px; font-weight: 600; }
+.tutor-message-copy { white-space: pre-wrap; }
+.tutor-empty { display: grid; justify-items: center; align-content: center; align-self: stretch; gap: 10px; flex: 1; min-height: 110px; padding: 16px; text-align: center; }
+.tutor-empty>i { display: grid; place-items: center; width: 42px; height: 42px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; color: var(--muted); font-size: 20px; }
+.tutor-empty strong { font-size: 14px; color: var(--ink); }
+.tutor-empty p { max-width: 340px; margin: 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+.tutor-pending { opacity: .7; }
+.tutor-answer-actions, .tutor-guide-links { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.tutor-answer-actions button, .tutor-guide-links button, .tutor-task button, .tutor-text-button { min-height: 32px; padding: 5px 9px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; color: var(--ink); font-size: 11px; line-height: 1.4; }
+.tutor-answer-actions button:hover, .tutor-guide-links button:hover, .tutor-task button:hover { border-color: var(--muted); }
+.tutor-task { padding: 12px; margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.tutor-task h3 { font: 600 14px Inter,system-ui,sans-serif; letter-spacing: -.02em; color: var(--ink); margin: 0 0 8px; }
+.tutor-task p { white-space: pre-wrap; color: var(--muted); font-size: 12px; line-height: 1.6; margin-bottom: 12px; }
+.tutor-panel .tutor-composer { flex: none; display: block; padding: 10px 16px 12px; }
+.tutor-composer textarea { display: block; width: 100%; min-height: 54px; max-height: 120px; resize: vertical; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; color: var(--ink); background: var(--surface-soft); font: inherit; font-size: 12px; line-height: 1.5; }
+.tutor-composer-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 7px; }
+.tutor-composer-actions>small { margin-right: auto; font-size: 10px; color: var(--muted); }
+.tutor-composer .tutor-send { display: flex; gap: 6px; align-items: center; justify-content: center; width: auto; height: 36px; padding: 0 12px; border-radius: 9px; font-size: 12px; }
+.study-assistant .tutor-composer .tutor-send { background: var(--primary); color: var(--page); }
+.study-assistant .tutor-composer .tutor-stop { background: transparent; color: var(--muted); }
+.tutor-composer .tutor-stop { width: auto; height: auto; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--muted); font-size: 11px; }
+.tutor-disclosure { display: block; margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.tutor-error { display: flex; gap: 10px; align-items: center; flex: none; padding: 9px 16px; border-top: 1px solid var(--border); color: var(--danger); font-size: 12px; line-height: 1.5; }
+.tutor-error>span { flex: 1; }
+.tutor-panel [hidden] { display: none !important; }
+.tutor-panel button:disabled { opacity: .45; cursor: wait; }
+.tutor-panel button:focus-visible, .tutor-panel textarea:focus-visible { outline: 2px solid var(--muted); outline-offset: 2px; }
+.assistant-guide-target { outline: 3px solid var(--primary) !important; outline-offset: 6px; }
+.assistant-guide-card { position: fixed; z-index: 1600; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(470px,calc(100vw - 32px)); padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: 0 16px 60px #0004; }
+.assistant-guide-card h2 { margin: 0 0 12px; color: var(--ink); font-size: 20px; }
+.assistant-guide-card p { color: var(--muted); font-size: 14px; line-height: 1.65; }
+.assistant-guide-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+@media (max-width:767.98px) {
+  body:has([data-study-assistant]) .mobile-fab { bottom: 88px; }
+  .study-assistant { left: 12px; right: 12px; bottom: 12px; gap: 8px; }
+  .study-assistant .tutor-panel, .study-assistant .tutor-expanded { width: 100%; height: min(760px,calc(100dvh - 86px)); }
+  .tutor-panel .assistant-header { padding: 10px 12px; gap: 8px; }
+  .tutor-panel .tutor-expand { display: none; }
+  .tutor-panel .assistant-header small { font-size: 10px; }
+  .tutor-modes { padding: 6px 8px; }
+  .tutor-modes button { flex-direction: column; gap: 4px; font-size: 10px; padding: 5px; }
+  .tutor-context { max-height: 140px; padding: 10px 12px 6px; }
+  .tutor-context>p { font-size: 11px; }
+  .tutor-drop-copy { display: none; }
+  .tutor-connection { padding-left: 12px; padding-right: 12px; font-size: 10px; }
+  .tutor-panel .tutor-composer { padding: 8px 12px 10px; }
+  .tutor-panel .assistant-messages { padding: 10px 12px; }
+  .tutor-answer-actions button, .tutor-guide-links button, .tutor-task button { min-height: 36px; }
+  .tutor-file>span { max-width: 150px; }
+  .assistant-guide-card { padding: 18px; }
+}

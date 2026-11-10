@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head><th:block th:replace="~{fragments :: head(#{topbar.settings})}"></th:block></head>
+<body class="app-shell" data-page="settings">
+<th:block th:replace="~{fragments :: skip}"></th:block><th:block th:replace="~{fragments :: sidebar}"></th:block><div class="drawer-backdrop" data-drawer-close></div>
+<div class="app-main"><th:block th:replace="~{fragments :: topbar(#{topbar.settings})}"></th:block>
+<main id="main-content" class="content container-fluid"><div data-settings-root><p role="status">Загружаем настройки…</p><noscript>Для изменения настроек включите JavaScript.</noscript></div></main>
+<th:block th:replace="~{fragments :: footer}"></th:block></div>
+<th:block th:replace="~{fragments :: toastRegion}"></th:block><th:block th:replace="~{fragments :: scripts}"></th:block>
+</body></html>

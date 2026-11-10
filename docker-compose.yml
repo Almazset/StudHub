@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: studhub-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-studhub}
+      POSTGRES_USER: ${DB_USERNAME:-studhub}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-studhub_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - studhub-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  studhub-postgres-data:
