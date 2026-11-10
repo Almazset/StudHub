@@ -13,9 +13,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class DataInitializer {
     @Bean
     CommandLineRunner createDemoAdmin(UserAccountRepository users, PasswordEncoder encoder,
-            @Value("${STUDHUB_ADMIN_EMAIL:admin@studhub.local}") String email,
-            @Value("${STUDHUB_ADMIN_PASSWORD:ChangeMe123!}") String password) {
+            @Value("${STUDHUB_ADMIN_EMAIL:}") String email,
+            @Value("${STUDHUB_ADMIN_PASSWORD:}") String password) {
         return args -> {
+            if (email.isBlank() && password.isBlank()) return;
+            if (email.isBlank() || password.length() < 12) throw new IllegalStateException("Set both STUDHUB_ADMIN_EMAIL and a STUDHUB_ADMIN_PASSWORD of at least 12 characters");
             if (!users.existsByEmailIgnoreCase(email)) {
                 UserAccount admin = new UserAccount();
                 admin.setFullName("Алмаз");
@@ -23,7 +25,7 @@ public class DataInitializer {
                 admin.setPassword(encoder.encode(password));
                 admin.setRole(Role.ADMIN);
                 users.save(admin);
-                System.out.println("Demo ADMIN created: " + email + " (change the default password before sharing/deployment)");
+                System.out.println("Administrator created: " + email + "");
             }
         };
     }
