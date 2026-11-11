@@ -56,12 +56,12 @@
   }
   function renderList() {
     const query=$('[data-chat-search]').value.trim().toLocaleLowerCase();
-    const visible=rooms.filter(r=>(filter==='all'||r.kind===filter||r.kind==='GLOBAL') && roomName(r).toLocaleLowerCase().includes(query));
+    const visible=rooms.filter(r=>(filter==='all'||r.kind===filter||(filter==='GROUP'&&r.kind==='PROJECT')||r.kind==='GLOBAL') && roomName(r).toLocaleLowerCase().includes(query));
     const next=JSON.stringify([visible,current,filter,query,window.StudHubI18n?.language]);if(next===signature)return;signature=next;
     const list=$('[data-chat-list]');list.replaceChildren();
     visible.sort((a,b)=>Number(b.kind==='GLOBAL')-Number(a.kind==='GLOBAL')).forEach(room=>{
       const el=button('',()=>openRoom(room.id),'chat-room');el.classList.toggle('active',room.id===current);el.setAttribute('aria-pressed',String(room.id===current));
-      const avatar=node('span','chat-avatar');avatar.append(icon(room.kind==='GLOBAL'?'globe2':room.kind==='GROUP'?'people':'person'));el.append(avatar);
+      const avatar=node('span','chat-avatar');avatar.append(icon(room.kind==='GLOBAL'?'globe2':['GROUP','PROJECT'].includes(room.kind)?'people':'person'));el.append(avatar);
       const text=node('span','chat-room-copy'),line=node('span','chat-room-line');line.append(node('strong','',roomName(room)));
       if(room.lastMessage)line.append(node('time','',time(room.lastMessage.createdAt)));text.append(line);
       const summary=node('span','chat-room-preview',room.lastMessage?.text || t(room.kind==='GLOBAL'?'globalHint':'start'));text.append(summary);el.append(text);
@@ -179,7 +179,7 @@
     const host=$('.chat-picker');host.replaceChildren();
     const form=node('form','chat-create-form');
     if(type==='GROUP'&&!adding){const label=node('label','',t('name'));label.htmlFor='chatGroupName';const input=node('input');input.id='chatGroupName';input.name='name';input.required=true;input.minLength=2;input.maxLength=80;input.placeholder=t('namePlaceholder');form.append(label,input);}
-    const label=node('label','',t('searchPeople'));label.htmlFor='chatPeopleSearch';const search=node('input');search.type='search';search.id='chatPeopleSearch';search.maxLength=80;search.autocomplete='off';
+    const label=node('label','',t('searchPeople'));label.htmlFor='chatPeopleSearch';const search=node('input');search.type='search';search.id='chatPeopleSearch';search.maxLength=80;search.autocomplete='off';search.placeholder='Имя, никнейм или SH-ID';
     const help=node('p','chat-picker-hint',t('peopleHint'));const choices=node('div','chat-people');choices.setAttribute('aria-live','polite');
     const picked=node('div','chat-picked');picked.setAttribute('aria-live','polite');const submit=node('button','chat-button primary',t(adding?'save':type==='DIRECT'?'startChat':'create'));submit.type='submit';submit.disabled=true;
     form.append(label,search,help,picked,choices,submit);host.append(form);
@@ -193,7 +193,7 @@
         eligible.forEach(person=>{
           const row=node('label','chat-person-choice'),check=node('input');check.type=type==='DIRECT'?'radio':'checkbox';check.name='person';check.value=person.id;check.checked=selected.has(person.id);
           check.addEventListener('change',()=>{if(type==='DIRECT')selected.clear();if(check.checked)selected.set(person.id,person);else selected.delete(person.id);updatePicked();});
-          row.append(check,node('span','chat-avatar small',personName(person).slice(0,1)),node('span','',personName(person)));choices.append(row);
+          row.append(check,node('span','chat-avatar small',personName(person).slice(0,1)),node('span','',`${personName(person)} · SH-${person.id}`));choices.append(row);
         });
         if(!eligible.length)choices.append(node('p','',t('noMatches')));
       }catch(e){if(version===dialogSequence){choices.replaceChildren();error(e,true);}}
@@ -220,7 +220,7 @@
     const host=$('[data-chat-dialog-body]'),id=current,version=dialogSequence;host.append(node('p','',t('loading')));
     try {
       const result=await api(`/rooms/${id}`);if(version!==dialogSequence)return;detail=result;host.replaceChildren();
-      host.append(node('p','chat-picker-hint',t(detail.room.kind==='GROUP'?'groupHint':'privateHint')));
+      host.append(node('p','chat-picker-hint',detail.room.kind==='PROJECT'?'Состав чата соответствует участникам проекта.':t(detail.room.kind==='GROUP'?'groupHint':'privateHint')));
       const list=node('ul','chat-member-list');detail.members.forEach(person=>{const li=node('li');li.append(node('span','chat-avatar small',personName(person).slice(0,1)),node('span','',personName(person)+(person.id===meId?` (${t('you')})`:'')));if(person.id===detail.room.ownerId)li.append(node('small','',t('owner')));list.append(li);});host.append(list);
       if(detail.room.kind==='GROUP') {
         if(detail.room.ownerId===meId)host.append(button(t('add'),()=>{host.replaceChildren(node('div','chat-picker'));dialogHeading('add');picker('GROUP',true);}));
@@ -259,7 +259,7 @@
     $('[data-chat-back]').onclick=()=>{saveDraft();root.classList.remove('chat-has-room');$('[data-chat-search]').focus();};
     $('[data-chat-newest]').onclick=()=>{scrollEnd();markRead();};
     $('[data-chat-messages]').addEventListener('scroll',()=>{if(nearBottom()){$('[data-chat-newest]').hidden=true;markRead();}},{passive:true});
-    updateLabels();sync();timer=setInterval(sync,4000);
+    updateLabels();sync().then(()=>{const room=new URLSearchParams(location.search).get('room');if(room && rooms.some(r=>r.id===room))openRoom(room);});timer=setInterval(sync,4000);
   }
   if(preview&&!document.querySelector('[data-chat-nav]')) {
     const link=node('a','sidebar-link');link.href='#chat';link.dataset.previewRoute='chat';link.dataset.chatNav='';link.append(icon('chat-dots'),node('span','',t('title')));

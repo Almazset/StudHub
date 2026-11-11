@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head><th:block th:replace="~{fragments :: head('Проект')}"></th:block></head>
+<body class="app-shell" data-page="projects">
+<th:block th:replace="~{fragments :: skip}"></th:block><th:block th:replace="~{fragments :: sidebar}"></th:block>
+<div class="drawer-backdrop" data-drawer-close></div><div class="app-main"><th:block th:replace="~{fragments :: topbar('Проект')}"></th:block>
+<main id="main-content" class="content container-fluid project-detail">
+<a class="project-back" th:href="@{/projects}">← Все проекты</a>
+<header class="project-detail-header"><div><p class="eyebrow">ПРОЕКТ</p><h1 th:text="${project.title}">Проект</h1><p class="muted-copy" th:text="${project.owner} ? 'Вы создатель проекта' : 'Вы участник проекта'">Участник</p></div><a th:if="${project.owner}" class="btn btn-light" href="#project-team">Добавить участника</a></header>
+<div class="project-detail-grid"><section class="surface project-detail-section"><h2>О проекте</h2><p class="project-description" th:text="${#strings.isEmpty(project.description)} ? 'Описание пока не добавлено.' : ${project.description}">Описание</p></section>
+<section class="surface project-detail-section"><h2>Участники <span class="project-detail-count" th:text="${#lists.size(project.members)}">0</span></h2><ul class="project-detail-members"><li th:each="member : ${project.members}"><span class="project-member-icon" aria-hidden="true"><i class="bi bi-person"></i></span><span th:text="${member.name}">Участник</span><small th:text="${member.id == project.ownerId} ? 'Владелец' : 'Участник'"></small><button th:if="${project.owner and member.id != project.ownerId}" type="button" class="btn btn-light" th:attr="data-remove-member=${member.id},aria-label=${'Удалить участника ' + member.name}">Удалить</button></li></ul></section></div>
+<section id="project-team" th:if="${project.owner}" class="surface project-detail-section project-management">
+<h2>Управление проектом</h2><p data-team-error class="project-error" role="alert" hidden></p>
+<form data-project-edit class="project-form"><label>Название проекта<input name="title" required maxlength="120" th:value="${project.title}"></label><label>Описание<textarea name="description" maxlength="1000" rows="3" th:text="${project.description}"></textarea></label><button type="submit" class="btn btn-primary">Сохранить проект</button></form>
+<h3>Добавить участника</h3><form data-team-search class="project-form"><label>Имя, никнейм или SH-ID<input name="query" required maxlength="80" placeholder="Например, SH-12"></label><button type="submit" class="btn btn-light">Найти участника</button></form><div data-team-results aria-live="polite"></div>
+</section>
+<section class="surface project-detail-section">
+<h2>Чат команды</h2><p class="muted-copy">Обсуждайте задачи и делитесь информацией. Переписка доступна только участникам проекта.</p>
+<button type="button" class="btn btn-primary" data-project-chat th:attr="data-project-chat=${project.id}">Открыть чат команды</button>
+<p data-project-chat-error class="project-error" role="alert" hidden></p>
+</section>
+<section class="surface project-detail-section project-tasks" th:attr="data-project-tasks=${project.id},data-owner=${project.owner},data-viewer=${project.viewerId}">
+<div class="project-tasks-heading"><div><h2>Задачи проекта</h2><p class="muted-copy">Планируйте работу и отслеживайте её выполнение.</p></div></div>
+<div class="project-progress"><p data-project-progress role="status">Загружаем прогресс…</p><progress data-project-progress-bar max="100" value="0" aria-label="Выполнение задач проекта"></progress></div>
+<div class="project-task-filters"><label>Поиск задач<input type="search" data-task-search placeholder="Название задачи"></label><label>Статус<select data-task-filter><option value="">Все статусы</option><option value="TODO">Запланировано</option><option value="IN_PROGRESS">В работе</option><option value="REVIEW">На проверке</option><option value="DONE">Готово</option></select></label><label><input type="checkbox" data-task-mine> Только мои</label><label><input type="checkbox" data-task-overdue> Просроченные</label></div>
+<p class="muted-copy">Участники могут добавлять и редактировать задачи. Удаление задач доступно владельцу.</p>
+<p data-task-error class="project-error" role="alert" hidden></p>
+<form data-task-form class="project-task-form"><label>Название задачи<input name="title" required maxlength="150" placeholder="Например, подготовить презентацию"></label><label>Исполнитель<select name="assigneeId"><option value="">Не назначен</option><option th:each="member : ${project.members}" th:value="${member.id}" th:text="${member.name}"></option></select></label><label>Срок<input name="dueDate" type="date"></label><button class="btn btn-primary" type="submit">Добавить задачу</button><button type="button" class="btn btn-light" data-task-cancel hidden>Отменить редактирование</button></form>
+<div data-task-list aria-live="polite"><p class="muted-copy">Загружаем задачи…</p></div></section>
+</main><th:block th:replace="~{fragments :: footer}"></th:block></div><th:block th:replace="~{fragments :: toastRegion}"></th:block><th:block th:replace="~{fragments :: scripts}"></th:block><script th:src="@{/js/project-tasks.js}" defer></script></body></html>

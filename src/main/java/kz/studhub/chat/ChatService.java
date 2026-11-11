@@ -85,7 +85,19 @@ public class ChatService {
     @Transactional(readOnly = true)
     public List<Person> search(String email, String query) {
         var viewer = me(email);
-        return users.searchChatUsers("members",query.strip(),viewer.getId(),PageRequest.of(0,20))
+        String term = query.strip();
+        if (term.regionMatches(true, 0, "SH-", 0, 3)) {
+            String number = term.substring(3);
+            if (!number.matches("[1-9][0-9]{0,18}")) return List.of();
+            try {
+                Long id = Long.valueOf(number);
+                if (id.equals(viewer.getId())) return List.of();
+                return users.findChatIdentities(List.of(id)).stream()
+                    .filter(u -> "members".equals(u.getProfileVisibility()))
+                    .map(u -> new Person(u.getId(), displayName(u))).toList();
+            } catch (NumberFormatException ex) { return List.of(); }
+        }
+        return users.searchChatUsers("members",term,viewer.getId(),PageRequest.of(0,20))
             .stream().map(u -> new Person(u.getId(),displayName(u))).toList();
     }
     @Transactional(readOnly = true)
@@ -114,6 +126,29 @@ public class ChatService {
         selectable(List.of(peerId),viewer); capacity(viewer); capacity(peerId);
         var room = new ChatRoom(UUID.randomUUID().toString(),"DIRECT","",null); room.directKey = key;
         rooms.save(room); members.save(new ChatMember(room.id,viewer)); members.save(new ChatMember(room.id,peerId));
+        return view(room,viewer);
+    }
+    private void projectCapacity(Long userId) {
+        if (members.countByUserId(userId) >= 100)
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Достигнут лимит чатов участника");
+    }
+    // Called only after the project controller has locked and authorized the project.
+    public Room projectRoom(Long projectId, String title, Long ownerId, Set<Long> userIds, Long viewer, boolean create) {
+        String id = "project-" + projectId;
+        ChatRoom room = rooms.locked(id).orElse(null);
+        if (room == null && !create) return null;
+        if (room == null) {
+            userIds.forEach(this::projectCapacity);
+            room = rooms.save(new ChatRoom(id,"PROJECT",title.substring(0,Math.min(80,title.length())),ownerId));
+        }
+        room.name=title.substring(0,Math.min(80,title.length()));
+        members.findByRoomIdOrderByUserId(id).stream().filter(m -> !userIds.contains(m.userId)).forEach(members::delete);
+        for (Long userId : userIds) {
+            if (!members.existsByRoomIdAndUserId(id,userId)) {
+                projectCapacity(userId);
+                members.save(new ChatMember(id,userId));
+            }
+        }
         return view(room,viewer);
     }
     public Room group(String email, String name, Set<Long> ids) {

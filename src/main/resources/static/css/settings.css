@@ -150,3 +150,8 @@ html[data-font-size] .course-card h3 { font-size: calc(20px * var(--studhub-text
 .settings-logout { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 .settings-logout .popover-action { width: 100%; min-height: 44px; color: var(--danger); }
 @media (max-width:767.98px) { .topbar-profile { padding: 4px; } .topbar-profile-name { display: none; } }
+
+.settings-user-id { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:14px; margin-bottom:20px; border:1px solid var(--border); border-radius:12px; background:var(--surface-soft); }
+.settings-user-id > span:not([role]) { font-weight:700; letter-spacing:.03em; user-select:all; }
+.settings-user-id small { flex-basis:100%; color:var(--muted); }
+.settings-user-id [role=status] { color:var(--muted); font-size:12px; }

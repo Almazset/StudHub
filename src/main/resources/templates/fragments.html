@@ -41,6 +41,7 @@
     <a class="sidebar-link" data-nav="/assignments" th:href="@{/assignments}" th:aria-label="#{nav.assignments}" th:title="#{nav.assignments}"><i class="bi bi-check2-square"></i><span th:text="#{nav.assignments}">Задания</span></a>
     <a class="sidebar-link" data-nav="/projects" th:href="@{/projects}" aria-label="Проекты" title="Проекты"><i class="bi bi-folder"></i><span>Проекты</span></a>
     <a class="sidebar-link" data-nav="/users" th:if="${currentUser != null and currentUser.role.name() == 'ADMIN'}" th:href="@{/users}" th:aria-label="#{nav.users}" th:title="#{nav.users}"><i class="bi bi-people"></i><span th:text="#{nav.users}">Пользователи</span></a>
+    <a class="sidebar-link" data-nav="/friends" th:href="@{/friends}" aria-label="Друзья" title="Друзья"><i class="bi bi-person-heart"></i><span>Друзья</span></a>
     <a class="sidebar-link" data-nav="/chat" th:href="@{/chat}" aria-label="Чат" title="Чат" data-chat-nav><i class="bi bi-chat-dots"></i><span>Чат</span></a>
     <p class="sidebar-label sidebar-label-secondary" th:text="#{nav.system}">Система</p>
     <a class="sidebar-link" th:href="@{/swagger-ui.html}" target="_blank" rel="noopener" th:aria-label="#{nav.api}" th:title="#{nav.api}"><i class="bi bi-braces-asterisk"></i><span th:text="#{nav.api}">API документация</span><i class="bi bi-box-arrow-up-right sidebar-external"></i></a>

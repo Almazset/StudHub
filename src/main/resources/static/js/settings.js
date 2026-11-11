@@ -104,7 +104,7 @@
     const profile = data.profile;
     const image = profile.hasPhoto ? `<img src="${esc(preview ? data.photo : `/api/settings/photo?v=${Date.now()}`)}" alt="${t('photo')}">` : esc((profile.nickname || profile.name).slice(0,1).toLocaleUpperCase(i18n.language));
     return `${card('photo','photoHint',`<div class="settings-photo-row"><span class="settings-avatar">${image}</span><div class="settings-photo-actions"><label class="btn btn-light settings-upload" for="settingsPhoto"><i class="bi bi-upload"></i>${t('upload')}</label><input id="settingsPhoto" type="file" accept="image/jpeg,image/png" class="visually-hidden" data-settings-photo>${profile.hasPhoto ? `<button type="button" class="text-link" data-settings-action="remove-photo">${t('removePhoto')}</button>` : ''}</div></div>`)}
-      ${card('profile','',`<form data-settings-form="profile">${field('name','name','text',profile.name,'required minlength="2" maxlength="80" autocomplete="name"')}${field('nickname','nickname','text',profile.nickname || '', 'maxlength="32" placeholder="donk" autocomplete="nickname"')}<p class="settings-hint">${t('nicknameHint')}</p>${field('email','email','email',profile.email,'required maxlength="120" autocomplete="email"')}<p class="settings-hint">${preview ? t('demo') : t('emailHint')}</p>${preview ? '' : `<div data-email-proof hidden>${field('currentPassword','currentPassword','password','','autocomplete="current-password" maxlength="100"')}${otpField()}</div>`}${formError}${saveButton()}</form>`)}
+      ${card('profile','',`<div class="settings-user-id"><strong>ID StudHub</strong><span>SH-${esc(profile.id)}</span><button type="button" class="btn btn-light" data-copy-user-id aria-label="Копировать ID">Копировать</button><small>Поделитесь ID, чтобы участники могли найти вас. Для поиска включите видимость профиля.</small><span data-user-id-copy-status role="status"></span></div><form data-settings-form="profile">${field('name','name','text',profile.name,'required minlength="2" maxlength="80" autocomplete="name"')}${field('nickname','nickname','text',profile.nickname || '', 'maxlength="32" placeholder="donk" autocomplete="nickname"')}<p class="settings-hint">${t('nicknameHint')}</p>${field('email','email','email',profile.email,'required maxlength="120" autocomplete="email"')}<p class="settings-hint">${preview ? t('demo') : t('emailHint')}</p>${preview ? '' : `<div data-email-proof hidden>${field('currentPassword','currentPassword','password','','autocomplete="current-password" maxlength="100"')}${otpField()}</div>`}${formError}${saveButton()}</form>`)}
       ${card('changePassword','passwordHint',preview ? `<p class="settings-demo-note"><i class="bi bi-shield-lock"></i>${t('demoSecurity')}</p>` : `<form data-settings-form="password">${field('currentPassword','currentPassword','password','','autocomplete="current-password" required maxlength="100"')}${field('newPassword','newPassword','password','','autocomplete="new-password" required minlength="8" maxlength="72"')}${field('confirmPassword','confirmPassword','password','','autocomplete="new-password" required minlength="8" maxlength="72"')}${otpField()}${formError}${saveButton('updatePassword')}</form>`)}`;
   }
   function factorContent() {
@@ -262,6 +262,13 @@
     } finally { form.removeAttribute('aria-busy'); buttons.forEach(button => button.disabled = false); }
   },true);
   document.addEventListener('click', async event => {
+    const copyId = event.target.closest('[data-copy-user-id]');
+    if (copyId) {
+      const status = document.querySelector('[data-user-id-copy-status]');
+      try { await navigator.clipboard.writeText(`SH-${data.profile.id}`); status.textContent = 'ID скопирован'; }
+      catch { status.textContent = 'Не удалось скопировать. Выделите ID вручную.'; }
+      return;
+    }
     const nav = event.target.closest('[data-settings-section]');
     if (nav) { section = nav.dataset.settingsSection; history.replaceState(null,'',`#${preview ? 'settings-' : ''}${section}`); draw(true); return; }
     const action = event.target.closest('[data-settings-action]');
