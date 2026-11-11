@@ -12,13 +12,17 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 @RestController @RequestMapping("/api/friends")
 public class FriendController {
- private final FriendshipRepository friends; private final UserAccountRepository users; private final ChatService chat;
- public FriendController(FriendshipRepository f,UserAccountRepository u,ChatService c){friends=f;users=u;chat=c;}
+ private final FriendshipRepository friends; private final UserAccountRepository users; private final ChatService chat; private final PresenceService presence;
+ public FriendController(FriendshipRepository f,UserAccountRepository u,ChatService c,PresenceService presence){friends=f;users=u;chat=c;this.presence=presence;}
  public record Request(@NotNull @Positive Long userId) {}
  private Long me(Principal p){return users.findByEmailIgnoreCase(p.getName()).orElseThrow().getId();}
  private ResponseStatusException notFound(){return new ResponseStatusException(HttpStatus.NOT_FOUND);}
  private Map<String,Object> view(Friendship f,Long viewer){Long peer=f.lowUserId.equals(viewer)?f.highUserId:f.lowUserId;var person=users.findChatIdentities(List.of(peer)).stream().findFirst().orElseThrow(this::notFound);String name=("members".equals(person.getProfileVisibility()) ? (person.getNickname()==null||person.getNickname().isBlank()?person.getFullName():person.getNickname()) : "Участник");return Map.of("id",f.id,"userId",peer,"name",name,"status",f.status,"incoming",!f.requesterId.equals(viewer));}
- @GetMapping @Transactional(readOnly=true) public List<Map<String,Object>> list(Principal p){Long id=me(p);return friends.visible(id).stream().map(f->view(f,id)).toList();}
+ @GetMapping @Transactional(readOnly=true) public List<Map<String,Object>> list(Principal p){Long id=me(p);var relationships=friends.visible(id);
+ var accepted=relationships.stream().filter(f->"ACCEPTED".equals(f.status)).map(f->f.lowUserId.equals(id)?f.highUserId:f.lowUserId).toList();
+ var statuses=presence.visibleStatuses(accepted);
+ return relationships.stream().map(f->{Map<String,Object> result=new HashMap<>(view(f,id));Long peer=f.lowUserId.equals(id)?f.highUserId:f.lowUserId;
+ result.put("presence",statuses.getOrDefault(peer,"HIDDEN"));return result;}).toList();}
  @PostMapping @Transactional public Map<String,Object> send(Principal principal,@Valid @RequestBody Request req){
  Long me=me(principal),peer=req.userId();if(me.equals(peer))throw new ResponseStatusException(HttpStatus.BAD_REQUEST);Long lo=Math.min(me,peer),hi=Math.max(me,peer);
  users.findLockedById(lo).orElseThrow(this::notFound); var target=users.findById(peer).filter(u->"members".equals(u.getProfileVisibility())).orElseThrow(this::notFound);
