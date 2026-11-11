@@ -32,6 +32,25 @@ class ChatIntegrationTest {
         var user=new UserAccount();user.setFullName(name);user.setEmail(UUID.randomUUID()+"@example.com");user.setPassword("test-hash-not-a-login");user.setProfileVisibility("members");return users.saveAndFlush(user);
     }
     @BeforeEach void setup(){alice=account("Chat Alice");bob=account("Chat Bob");eve=account("Chat Eve");}
+    @Test void presenceIsPrivateAndPreferencesAreValidated() throws Exception {
+        mvc.perform(post("/api/friends/presence").with(user(bob.getEmail()))).andExpect(status().isForbidden());
+        mvc.perform(put("/api/friends/presence").with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"status\":\"BAD\"}")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/friends/presence").with(user(bob.getEmail())).with(csrf())).andExpect(status().isOk());
+        var result=mvc.perform(post("/api/friends").with(user(alice.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content(json.writeValueAsString(Map.of("userId",bob.getId())))).andExpect(status().isOk()).andReturn();
+        long id=json.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+        mvc.perform(get("/api/friends").with(user(alice.getEmail()))).andExpect(jsonPath("$[0].presence").value("HIDDEN"));
+        mvc.perform(post("/api/friends/"+id+"/accept").with(user(bob.getEmail())).with(csrf())).andExpect(status().isOk());
+        mvc.perform(get("/api/friends").with(user(alice.getEmail()))).andExpect(jsonPath("$[0].presence").value("ONLINE"));
+        mvc.perform(put("/api/friends/presence").with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"status\":\"INVISIBLE\"}")).andExpect(status().isOk());
+        mvc.perform(get("/api/friends/presence").with(user(bob.getEmail()))).andExpect(jsonPath("$.status").value("INVISIBLE"));
+        mvc.perform(get("/api/friends").with(user(alice.getEmail()))).andExpect(jsonPath("$[0].presence").value("OFFLINE"));
+        mvc.perform(get("/api/friends").with(user(eve.getEmail()))).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(delete("/api/friends/"+id).with(user(alice.getEmail())).with(csrf())).andExpect(status().isOk());
+        mvc.perform(get("/api/friends").with(user(alice.getEmail()))).andExpect(jsonPath("$.length()").value(0));
+    }
     @Test void projectManagementKeepsTasksAndChatConsistent() throws Exception {
         var created=mvc.perform(post("/api/projects").with(user(alice.getEmail())).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Team\"}"))
