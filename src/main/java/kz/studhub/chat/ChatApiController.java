@@ -17,6 +17,7 @@ public class ChatApiController {
     public record Members(@NotNull @Size(min=1,max=29) Set<@NotNull @Positive Long> userIds) {}
     public record Send(@NotBlank @Size(max=4000) String text, @NotNull UUID clientId) {}
     public record Read(@Positive long messageId) {}
+    public record Edit(@NotBlank @Size(max=4000) String text) {}
     private final ChatService chat;
     public ChatApiController(ChatService chat) { this.chat = chat; }
     private <T> ResponseEntity<T> ok(T body) { return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body); }
@@ -28,6 +29,8 @@ public class ChatApiController {
     @GetMapping("/rooms/{id}/messages") public ResponseEntity<?> history(Principal user, @PathVariable String id,
         @RequestParam(required=false) @Positive Long before, @RequestParam(required=false) @PositiveOrZero Long after) { return ok(chat.history(user.getName(),id,before,after)); }
     @PostMapping("/rooms/{id}/messages") public ResponseEntity<?> send(Principal user, @PathVariable String id, @Valid @RequestBody Send request) { return ok(chat.send(user.getName(),id,request.text(),request.clientId())); }
+    @PutMapping("/rooms/{id}/messages/{messageId}") public ResponseEntity<?> edit(Principal user,@PathVariable String id,@PathVariable @Positive Long messageId,@Valid @RequestBody Edit request) { return ok(chat.editMessage(user.getName(),id,messageId,request.text())); }
+    @GetMapping("/rooms/{id}/search") public ResponseEntity<?> searchMessages(Principal user,@PathVariable String id,@RequestParam @Size(min=2,max=120) String q) { return ok(chat.searchMessages(user.getName(),id,q)); }
     @PostMapping("/rooms/{id}/read") public ResponseEntity<?> read(Principal user, @PathVariable String id, @Valid @RequestBody Read request) { chat.read(user.getName(),id,request.messageId()); return ok(Map.of("saved",true)); }
     @PostMapping("/rooms/{id}/members") public ResponseEntity<?> add(Principal user, @PathVariable String id, @Valid @RequestBody Members request) { chat.addMembers(user.getName(),id,request.userIds()); return ok(Map.of("saved",true)); }
     @PostMapping("/rooms/{id}/leave") public ResponseEntity<?> leave(Principal user, @PathVariable String id) { chat.leave(user.getName(),id); return ok(Map.of("saved",true)); }

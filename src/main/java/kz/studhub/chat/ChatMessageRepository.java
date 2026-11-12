@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
     List<ChatMessage> findByRoomIdAndIdLessThanOrderByIdDesc(String roomId, long before, Pageable page);
     List<ChatMessage> findByRoomIdAndIdGreaterThanOrderByIdAsc(String roomId, long after, Pageable page);
+    List<ChatMessage> findByRoomIdAndTextContainingIgnoreCaseOrderByIdDesc(String roomId,String text,Pageable page);
     Optional<ChatMessage> findFirstByRoomIdOrderByIdDesc(String roomId);
     Optional<ChatMessage> findByRoomIdAndSenderIdAndClientId(String roomId, Long senderId, String clientId);
     long countByRoomIdAndIdGreaterThanAndSenderIdNot(String roomId, long after, Long viewer);

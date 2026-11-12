@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ChatService {
     public record Person(Long id, String name) {}
-    public record Message(Long id, Person sender, String text, Instant createdAt, String clientId) {}
+    public record Message(Long id, Person sender, String text, Instant createdAt, String clientId, Instant editedAt) {}
     public record Room(String id, String kind, String name, Long peerId, Long ownerId, int memberCount,
                        long unread, Message lastMessage, Instant updatedAt) {}
     public record RoomList(Long meId, List<Room> rooms) {}
@@ -50,7 +50,7 @@ public class ChatService {
     }
     private List<Message> views(List<ChatMessage> rows, Long viewer) {
         var accounts = accounts(rows.stream().map(m -> m.senderId).toList());
-        return rows.stream().map(m -> new Message(m.id,person(m.senderId,accounts,viewer),m.text,m.createdAt,m.clientId)).toList();
+        return rows.stream().map(m -> new Message(m.id,person(m.senderId,accounts,viewer),m.text,m.createdAt,m.clientId,m.editedAt)).toList();
     }
     private Room view(ChatRoom room, Long viewer) {
         var participants = members.findByRoomIdOrderByUserId(room.id);
@@ -79,7 +79,7 @@ public class ChatService {
             String name = peerId == null ? room.name : person(peerId,accounts,viewer).name();
             ChatMessage last = latest.get(room.id);
             return new Room(room.id,room.kind,name,peerId,room.ownerId,room.kind.equals("GLOBAL") ? 0 : participants.size(),unread.getOrDefault(room.id,0L),
-                last == null ? null : new Message(last.id,person(last.senderId,accounts,viewer),last.text,last.createdAt,last.clientId),room.updatedAt);
+                last == null ? null : new Message(last.id,person(last.senderId,accounts,viewer),last.text,last.createdAt,last.clientId,last.editedAt),room.updatedAt);
         }).toList());
     }
     @Transactional(readOnly = true)
@@ -182,6 +182,19 @@ public class ChatService {
         var message = messages.saveAndFlush(new ChatMessage(id,viewer,body,clientId.toString()));
         room.updatedAt = message.createdAt;
         return views(List.of(message),viewer).getFirst();
+    }
+    public Message editMessage(String email, String id, Long messageId, String text) {
+        Long viewer=me(email).getId(); accessible(id,viewer,true);
+        var message=messages.findById(messageId).filter(m -> m.roomId.equals(id)).orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
+        if(!message.senderId.equals(viewer)) throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
+        String body=text.strip();if(body.isEmpty() || body.length()>4000 || body.indexOf('\0')>=0) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
+        message.text=body;message.editedAt=Instant.now();return views(List.of(message),viewer).getFirst();
+    }
+    @Transactional(readOnly=true)
+    public List<Message> searchMessages(String email,String id,String query) {
+        Long viewer=me(email).getId();accessible(id,viewer,false);
+        String term=query.strip();if(term.length()<2 || term.length()>120) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
+        return views(messages.findByRoomIdAndTextContainingIgnoreCaseOrderByIdDesc(id,term,PageRequest.of(0,50)),viewer);
     }
     public void read(String email, String id, long messageId) {
         Long viewer = lockedMe(email).getId(); accessible(id,viewer,true);
