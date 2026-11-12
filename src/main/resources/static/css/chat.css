@@ -1,4 +1,4 @@
-[data-chat-root] { --chat-own: var(--ink); --chat-own-text: var(--surface); padding-bottom: 60px; }
+[data-chat-root] { --chat-own: color-mix(in srgb, var(--surface-soft) 88%, var(--accent) 12%); --chat-own-text: var(--ink); padding-bottom: 60px; }
 [data-chat-root] [hidden] { display: none !important; }
 .chat-page-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
 .chat-page-heading h2 { margin: 0 0 8px; font-size: 30px; font-weight: 650; }
@@ -107,3 +107,7 @@
 .chat-message-menu { position: absolute; z-index: 5; right: 0; top: 34px; min-width: 145px; padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: 0 6px 20px #0003; }
 .chat-action { display: block; width: 100%; padding: 9px; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .chat-action:hover { background: var(--surface-soft); }
+
+.chat-message.own { padding: 8px 11px; border-color: var(--border); }
+.chat-message.own .chat-message-meta { gap: 8px; margin-bottom: 2px; }
+.chat-message.own .chat-message-body { line-height: 1.4; }
