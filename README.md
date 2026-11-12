@@ -1,6 +1,6 @@
 # StudHub — Student Learning Management Platform
 
-Учебный проект для курса Java Programming. StudHub позволяет регистрироваться, входить в систему, управлять курсами и заданиями. Проект демонстрирует Spring Boot, Spring MVC + Thymeleaf, Spring Data JPA, PostgreSQL, Spring Security, REST API, валидацию и тестирование.
+Самостоятельный проект для развитии. StudHub позволяет регистрироваться, входить в систему, управлять курсами и заданиями. Проект демонстрирует Spring Boot, Spring MVC + Thymeleaf, Spring Data JPA, PostgreSQL, Spring Security, REST API, валидацию и тестирование.
 
 Структура проекта описана в [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md). Навигационные разделы: [frontend](frontend/README.md), [backend](backend/README.md) и [database](database/README.md).
 
