@@ -98,7 +98,14 @@
       const stamp=node('time','',time(message.createdAt));stamp.dateTime=message.createdAt;stamp.title=new Date(message.createdAt).toLocaleString();meta.append(stamp);
       const body=node('p','chat-message-body');appendText(body,message.text);item.append(meta,body);
       if(message.editedAt)meta.append(node('small','','изменено'));
-      if(own&&!preview){const edit=button('Изменить',async()=>{const text=prompt('Изменить сообщение',message.text);if(text===null||text===message.text)return;edit.disabled=true;try{const updated=await api(`/rooms/${current}/messages/${message.id}`,'PUT',{text});const index=rows.findIndex(m=>m.id===updated.id);if(index!==-1){rows[index]=updated;renderMessages();}}catch(e){error(e);}finally{edit.disabled=false;}},'chat-button');item.append(edit);}
+      if(own&&!preview){
+        const menu=node('details','chat-message-actions'), toggle=node('summary','chat-message-toggle');
+        toggle.setAttribute('aria-label','Действия с сообщением');toggle.title='Действия с сообщением';toggle.append(icon('chevron-down'));
+        const actions=node('div','chat-message-menu');
+        const edit=button('Изменить',async()=>{menu.open=false;const text=prompt('Изменить сообщение',message.text);if(text===null||text===message.text)return;edit.disabled=true;try{const updated=await api(`/rooms/${current}/messages/${message.id}`,'PUT',{text});const index=rows.findIndex(m=>m.id===updated.id);if(index!==-1){rows[index]=updated;renderMessages();}}catch(e){error(e);}finally{edit.disabled=false;}},'chat-action');
+        const remove=button('Удалить',async()=>{menu.open=false;if(!confirm('Удалить сообщение для всех участников?'))return;const id=current;remove.disabled=true;try{await api(`/rooms/${id}/messages/${message.id}`,'DELETE');if(current===id){rows=rows.filter(m=>m.id!==message.id);renderMessages();await refreshList();}}catch(e){error(e);}finally{remove.disabled=false;}},'chat-action');
+        actions.append(edit,remove);menu.append(toggle,actions);meta.append(menu);
+      }
       list.append(item);
     });
     $('[data-chat-older]').hidden=!older;
@@ -139,6 +146,8 @@
         if(version!==opening||!root?.isConnected)return;
         const bottom=nearBottom(),box=$('[data-chat-messages]'),top=box.scrollTop;
         const revised=new Map(recent.messages.map(m=>[m.id,m]));let changed=false;
+        const earliest=recent.messages[0]?.id;
+        rows=rows.filter(m=>{const covered=!recent.hasMore || (earliest!==undefined && m.id>=earliest);if(covered&&!revised.has(m.id)){changed=true;return false;}return true;});
         rows=rows.map(m=>{const next=revised.get(m.id);if(next && (next.text!==m.text || next.editedAt!==m.editedAt)){changed=true;return next;}return m;});
         if(changed){renderMessages();box.scrollTop=top;}
         if(history.messages.length) {
