@@ -27,11 +27,27 @@ class ChatIntegrationTest {
     @Autowired ObjectMapper json;
     @Autowired UserAccountRepository users;
     @Autowired ChatService chat;
+    @Autowired kz.studhub.repository.CourseRepository courseRepository;
     UserAccount alice,bob,eve;
     UserAccount account(String name) {
         var user=new UserAccount();user.setFullName(name);user.setEmail(UUID.randomUUID()+"@example.com");user.setPassword("test-hash-not-a-login");user.setProfileVisibility("members");return users.saveAndFlush(user);
     }
     @BeforeEach void setup(){alice=account("Chat Alice");bob=account("Chat Bob");eve=account("Chat Eve");}
+    @Test void courseProgressIsPersonalAndValidatesOwnership() throws Exception {
+        var course=new kz.studhub.model.Course();course.setTitle("Study course");course.setTeacherName("Teacher");course=courseRepository.saveAndFlush(course);
+        String base="/api/courses/"+course.getId()+"/study-steps";
+        mvc.perform(post(base).with(user(alice.getEmail())).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Lesson\"}")).andExpect(status().isForbidden());
+        mvc.perform(post(base).with(user(alice.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"  \"}")).andExpect(status().isBadRequest());
+        var created=mvc.perform(post(base).with(user(alice.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Lesson\"}")).andExpect(status().isOk()).andReturn();
+        long id=json.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+        mvc.perform(get(base).with(user(bob.getEmail()))).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(put(base+"/"+id).with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"completed\":true}")).andExpect(status().isNotFound());
+        mvc.perform(delete(base+"/"+id).with(user(bob.getEmail())).with(csrf())).andExpect(status().isNotFound());
+        mvc.perform(put(base+"/"+id).with(user(alice.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"completed\":true}")).andExpect(status().isOk()).andExpect(jsonPath("$.completed").value(true));
+        mvc.perform(get(base).with(user(alice.getEmail()))).andExpect(jsonPath("$[0].completed").value(true));
+        mvc.perform(delete(base+"/"+id).with(user(alice.getEmail())).with(csrf())).andExpect(status().isOk());
+        mvc.perform(get(base).with(user(alice.getEmail()))).andExpect(jsonPath("$.length()").value(0));
+    }
     @Test void messageEditsAndSearchRespectRoomAndAuthor() throws Exception {
         var room=chat.direct(alice.getEmail(),bob.getId());
         var message=chat.send(alice.getEmail(),room.id(),"Первый текст",UUID.randomUUID());
