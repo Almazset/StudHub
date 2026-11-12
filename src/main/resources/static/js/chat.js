@@ -96,7 +96,10 @@
       const own=message.sender.id===meId, item=node('article',`chat-message${own?' own':''}`);
       const meta=node('div','chat-message-meta');meta.append(node('strong','',own?t('you'):personName(message.sender)));
       const stamp=node('time','',time(message.createdAt));stamp.dateTime=message.createdAt;stamp.title=new Date(message.createdAt).toLocaleString();meta.append(stamp);
-      const body=node('p','chat-message-body');appendText(body,message.text);item.append(meta,body);list.append(item);
+      const body=node('p','chat-message-body');appendText(body,message.text);item.append(meta,body);
+      if(message.editedAt)meta.append(node('small','','изменено'));
+      if(own&&!preview){const edit=button('Изменить',async()=>{const text=prompt('Изменить сообщение',message.text);if(text===null||text===message.text)return;edit.disabled=true;try{const updated=await api(`/rooms/${current}/messages/${message.id}`,'PUT',{text});const index=rows.findIndex(m=>m.id===updated.id);if(index!==-1){rows[index]=updated;renderMessages();}}catch(e){error(e);}finally{edit.disabled=false;}},'chat-button');item.append(edit);}
+      list.append(item);
     });
     $('[data-chat-older]').hidden=!older;
   }
@@ -113,6 +116,7 @@
   }
   async function openRoom(id) {
     if(!id)return;
+    $('[data-chat-search-results]').hidden=true;$('[data-chat-search-close]').hidden=true;$('#chat-message-query').value='';
     saveDraft();current=id;$('[data-chat-input]').value=drafts.get(id)?.text || '';detail=null;rows=[];older=false;const version=++opening;clearError();
     root.classList.add('chat-has-room');$('[data-chat-welcome]').hidden=true;$('[data-chat-conversation]').hidden=false;
     $('[data-chat-room-title]').textContent=t('loading');$('[data-chat-room-subtitle]').textContent='';$('[data-chat-room-hint]').textContent='';
@@ -131,9 +135,12 @@
     try {
       await refreshList();
       if(id&&id===current&&detail) {
-        const history=await api(`/rooms/${id}/messages?after=${rows.at(-1)?.id || 0}`);
+        const [history,recent]=await Promise.all([api(`/rooms/${id}/messages?after=${rows.at(-1)?.id || 0}`),api(`/rooms/${id}/messages`)]);
         if(version!==opening||!root?.isConnected)return;
         const bottom=nearBottom(),box=$('[data-chat-messages]'),top=box.scrollTop;
+        const revised=new Map(recent.messages.map(m=>[m.id,m]));let changed=false;
+        rows=rows.map(m=>{const next=revised.get(m.id);if(next && (next.text!==m.text || next.editedAt!==m.editedAt)){changed=true;return next;}return m;});
+        if(changed){renderMessages();box.scrollTop=top;}
         if(history.messages.length) {
           const known=new Set(rows.map(m=>m.id));rows.push(...history.messages.filter(m=>!known.has(m.id)));renderMessages();
           if(bottom)scrollEnd();else{box.scrollTop=top;$('[data-chat-newest]').hidden=false;}
@@ -244,13 +251,15 @@
       <div class="chat-filters" role="group" data-chat-title="title"><button type="button" data-chat-filter="all" class="active" aria-pressed="true" data-chat-label="all"></button><button type="button" data-chat-filter="DIRECT" aria-pressed="false" data-chat-label="direct"></button><button type="button" data-chat-filter="GROUP" aria-pressed="false" data-chat-label="groups"></button></div><div class="chat-room-list" data-chat-list></div><small class="chat-sync" data-chat-status role="status"></small></aside>
       <section class="chat-welcome" data-chat-welcome><i class="bi bi-chat-dots" aria-hidden="true"></i><h3 data-chat-label="choose"></h3><p data-chat-label="chooseHint"></p><button class="chat-button" type="button" data-chat-global data-chat-label="global"></button></section>
       <section class="chat-conversation" data-chat-conversation hidden aria-labelledby="chatRoomTitle"><header class="chat-conversation-header"><button type="button" class="chat-icon-button chat-back" data-chat-back data-chat-title="back"><i class="bi bi-arrow-left" aria-hidden="true"></i></button><span class="chat-avatar"><i class="bi bi-chat-dots" aria-hidden="true"></i></span><div class="chat-conversation-heading"><h3 id="chatRoomTitle" data-chat-room-title></h3><small data-chat-room-subtitle></small></div><button type="button" class="chat-icon-button" data-chat-members data-chat-title="members"><i class="bi bi-people" aria-hidden="true"></i></button></header>
-      <p class="chat-room-hint" data-chat-room-hint></p><button type="button" class="chat-older" data-chat-older data-chat-label="older" hidden></button><div class="chat-messages" data-chat-messages role="log" aria-live="off" data-chat-title="message"></div><button type="button" class="chat-newest" data-chat-newest data-chat-label="newest" hidden></button>
+      <p class="chat-room-hint" data-chat-room-hint></p><form data-chat-message-search class="chat-search"><label class="visually-hidden" for="chat-message-query">Поиск в сообщениях</label><input id="chat-message-query" type="search" minlength="2" maxlength="120" required placeholder="Поиск в сообщениях"><button type="submit" class="chat-button">Найти</button><button type="button" data-chat-search-close class="chat-button" hidden>Закрыть</button></form><div data-chat-search-results aria-live="polite" hidden></div><button type="button" class="chat-older" data-chat-older data-chat-label="older" hidden></button><div class="chat-messages" data-chat-messages role="log" aria-live="off" data-chat-title="message"></div><button type="button" class="chat-newest" data-chat-newest data-chat-label="newest" hidden></button>
       <form class="chat-composer" data-chat-composer><label class="visually-hidden" for="chatMessage" data-chat-label="message"></label><textarea id="chatMessage" rows="2" maxlength="4000" data-chat-input data-chat-placeholder="placeholder"></textarea><div class="chat-compose-footer"><small><span data-chat-label="hint"></span><span data-chat-count></span></small><button type="submit" class="chat-button primary" data-chat-send data-chat-label="send"></button></div></form></section></div>
       <dialog class="chat-dialog" data-chat-dialog aria-labelledby="chatDialogTitle"><div class="chat-dialog-heading"><h3 id="chatDialogTitle" data-chat-dialog-title></h3><button type="button" class="chat-icon-button" data-chat-close data-chat-title="close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="chat-error" role="alert" data-chat-dialog-error hidden><span></span></div><div data-chat-dialog-body></div></dialog>`;
     $('[data-chat-new]').onclick=()=>openDialog('new');$('[data-chat-close]').onclick=closeDialog;
     $('[data-chat-dialog]').addEventListener('cancel',event=>{event.preventDefault();closeDialog();});
     $('[data-chat-search]').addEventListener('input',renderList);
     root.querySelectorAll('[data-chat-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.chatFilter;root.querySelectorAll('[data-chat-filter]').forEach(el=>{el.classList.toggle('active',el===b);el.setAttribute('aria-pressed',String(el===b));});renderList();});
+    $('[data-chat-message-search]').addEventListener('submit',async event=>{event.preventDefault();if(!current||preview)return;const id=current,q=$('#chat-message-query').value.trim(),host=$('[data-chat-search-results]');if(q.length<2)return;try{const found=await api(`/rooms/${encodeURIComponent(id)}/search?q=${encodeURIComponent(q)}`);if(id!==current)return;host.replaceChildren();host.hidden=false;$('[data-chat-search-close]').hidden=false;host.append(node('strong','',`Найдено: ${found.length} (показано не более 50)`));found.forEach(m=>{const entry=node('p');entry.append(node('strong','',personName(m.sender)+': '));appendText(entry,m.text);host.append(entry);});}catch(e){error(e);}});
+    $('[data-chat-search-close]').onclick=()=>{$('[data-chat-search-results]').hidden=true;$('[data-chat-search-close]').hidden=true;};
     $('[data-chat-composer]').addEventListener('submit',send);
     $('[data-chat-input]').addEventListener('input',()=>{saveDraft();updateComposer();});
     $('[data-chat-input]').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('[data-chat-composer]').requestSubmit();}});

@@ -32,6 +32,20 @@ class ChatIntegrationTest {
         var user=new UserAccount();user.setFullName(name);user.setEmail(UUID.randomUUID()+"@example.com");user.setPassword("test-hash-not-a-login");user.setProfileVisibility("members");return users.saveAndFlush(user);
     }
     @BeforeEach void setup(){alice=account("Chat Alice");bob=account("Chat Bob");eve=account("Chat Eve");}
+    @Test void messageEditsAndSearchRespectRoomAndAuthor() throws Exception {
+        var room=chat.direct(alice.getEmail(),bob.getId());
+        var message=chat.send(alice.getEmail(),room.id(),"Первый текст",UUID.randomUUID());
+        String path="/api/chat/rooms/"+room.id()+"/messages/"+message.id();
+        String body=json.writeValueAsString(Map.of("text","Новый учебный текст"));
+        mvc.perform(put(path).with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
+        mvc.perform(put(path).with(user(eve.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isNotFound());
+        mvc.perform(put(path).with(user(alice.getEmail())).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
+        mvc.perform(put(path).with(user(alice.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.editedAt").exists());
+        mvc.perform(get("/api/chat/rooms/"+room.id()+"/search").param("q","учебный").with(user(bob.getEmail())))
+          .andExpect(status().isOk()).andExpect(jsonPath("$[0].text").value("Новый учебный текст"));
+        mvc.perform(get("/api/chat/rooms/"+room.id()+"/search").param("q","учебный").with(user(eve.getEmail()))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/chat/rooms/"+room.id()+"/search").param("q","%").with(user(bob.getEmail()))).andExpect(status().isBadRequest());
+    }
     @Test void presenceIsPrivateAndPreferencesAreValidated() throws Exception {
         mvc.perform(post("/api/friends/presence").with(user(bob.getEmail()))).andExpect(status().isForbidden());
         mvc.perform(put("/api/friends/presence").with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON)
