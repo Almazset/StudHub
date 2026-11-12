@@ -5,7 +5,7 @@ import jakarta.validation.constraints.*;
 import java.util.List;
 
 public record AssistantMessage(
-        @NotNull @Pattern(regexp="summary|explain|tasks") String mode,
+        @NotNull @Pattern(regexp="summary|explain|tasks|flashcards|quiz|exam|coach") String mode,
         @NotNull @Size(max=6000) String message,
         @NotNull @Pattern(regexp="ru|en|kk") String language,
         @NotNull @Size(max=8) List<@NotNull @Valid Turn> history) {

@@ -46,6 +46,13 @@ class AssistantApiSecurityTest {
         mvc.perform(multipart("/api/assistant/messages").file(request("summary")).with(user("student@example.com"))).andExpect(status().isForbidden());
         verify(gemini,never()).answer(any(),any());
     }
+    @Test void studyModesAcceptAuthenticatedRequests() throws Exception {
+        for(String mode:List.of("summary","flashcards","quiz","exam","coach")) {
+            mvc.perform(multipart("/api/assistant/messages").file(request(mode)).with(user("student@example.com")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.text").value("A lecture summary"));
+        }
+        verify(gemini,times(5)).answer(any(),any());
+    }
     @Test void validatesModeBeforeAnyProviderRequest() throws Exception {
         mvc.perform(multipart("/api/assistant/messages").file(request("system")).with(user("student@example.com")).with(csrf()))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("VALIDATION"));

@@ -4,8 +4,8 @@
   if (!root) return;
   const t = key => window.StudHubTutorCopy.t(key);
   const preview = location.pathname.endsWith('studhub-preview.html');
-  const modes = ['summary','explain','tasks','guide'];
-  const icon = {summary:'file-earmark-text',explain:'lightbulb',tasks:'list-check',guide:'compass'};
+  const modes = ['summary','flashcards','quiz','exam','coach','explain','tasks','guide'];
+  const icon = {summary:'file-earmark-text',flashcards:'cards',quiz:'question-circle',exam:'calendar-check',coach:'person-workspace',explain:'lightbulb',tasks:'list-check',guide:'compass'};
   root.dataset.userContent = '';
   root.innerHTML = `<div class="assistant-panel tutor-panel" id="studhubTutor" data-assistant-panel role="dialog" aria-modal="false" aria-labelledby="tutorHeading" hidden>
     <header class="assistant-header"><span class="assistant-avatar"><i class="bi bi-stars" aria-hidden="true"></i></span><div><strong id="tutorHeading" data-ai-label="title"></strong><small data-ai-label="subtitle"></small></div><button type="button" class="assistant-close" data-ai-action="clear" data-ai-title="newChat"><i class="bi bi-arrow-counterclockwise"></i></button><button type="button" class="assistant-close tutor-expand" data-ai-action="expand" data-ai-title="expand"><i class="bi bi-arrows-fullscreen"></i></button><button type="button" class="assistant-close" data-ai-action="close" data-ai-title="close"><i class="bi bi-x-lg"></i></button></header>

@@ -34,6 +34,15 @@ class GeminiClientTest {
         var answer = client.answer(request("summary"),List.of(new LectureFileReader.Lecture("lecture.pdf","application/pdf",new byte[]{1,2,3},null)));
         assertEquals("A useful summary",answer.text()); assertTrue(answer.tasks().isEmpty()); server.verify();
     }
+    @Test void tutoringInstructionsSpecifyReviewAndSourceLimits() throws Exception {
+        String payload=json.writeValueAsString(Map.of("text","Study response","tasks",List.of()));
+        server.expect(anything())
+            .andExpect(jsonPath("$.systemInstruction.parts[0].text",org.hamcrest.Matchers.containsString("Do not reveal answers until the student replies")))
+            .andExpect(jsonPath("$.systemInstruction.parts[0].text",org.hamcrest.Matchers.containsString("Do not provide a complete solution")))
+            .andExpect(jsonPath("$.contents[2].parts[0].text",org.hamcrest.Matchers.containsString("Request mode: quiz")))
+            .andRespond(withSuccess(response(payload,"STOP"),MediaType.APPLICATION_JSON));
+        assertEquals("Study response",client.answer(request("quiz"),List.of()).text());server.verify();
+    }
     @Test void validatesGeneratedTaskShapesAndDoesNotTreatHtmlAsExecutableActions() throws Exception {
         String body = json.writeValueAsString(Map.of("text","Practice","tasks",List.of(Map.of("title","Explain lists","description","Compare two collection types."))));
         var answer = client.parse(json.readTree(response(body,"STOP")),"tasks");
