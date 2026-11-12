@@ -98,3 +98,11 @@
   .chat-message { max-width: 94%; padding: 10px 12px; } .chat-compose-footer small { max-width: 140px; }
   .chat-dialog { padding: 16px; } .chat-demo-note { font-size: 11px; }
 }
+
+.chat-message-actions { position: relative; margin-left: auto; }
+.chat-message-toggle { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid currentColor; border-radius: 8px; cursor: pointer; list-style: none; }
+.chat-message-toggle::-webkit-details-marker { display: none; }
+.chat-message-toggle:focus-visible, .chat-action:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.chat-message-menu { position: absolute; z-index: 5; right: 0; top: 34px; min-width: 145px; padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: 0 6px 20px #0003; }
+.chat-action { display: block; width: 100%; padding: 9px; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.chat-action:hover { background: var(--surface-soft); }

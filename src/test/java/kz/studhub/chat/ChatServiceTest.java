@@ -51,6 +51,16 @@ class ChatServiceTest {
         chat.read(bob.getEmail(),"global",first.id());
         assertThat(chat.detail(bob.getEmail(),"global").room().unread()).isZero();
     }
+    @Test void onlyAuthorCanDeleteTheirMessage() {
+        var room=chat.direct(alice.getEmail(),bob.getId());
+        var message=chat.send(alice.getEmail(),room.id(),"Hello",UUID.randomUUID());
+        assertThatThrownBy(() -> chat.deleteMessage(bob.getEmail(),room.id(),message.id()))
+            .isInstanceOfSatisfying(ChatService.Failure.class,e -> assertThat(e.status).isEqualTo(HttpStatus.FORBIDDEN));
+        denied(() -> chat.deleteMessage(stranger.getEmail(),room.id(),message.id()));
+        denied(() -> chat.deleteMessage(alice.getEmail(),"global",message.id()));
+        chat.deleteMessage(alice.getEmail(),room.id(),message.id());
+        assertThat(chat.history(bob.getEmail(),room.id(),null,null).messages()).isEmpty();
+    }
     @Test void groupsEnforceOwnerMembershipAndLeaveRevokesAccess() {
         var room = chat.group(alice.getEmail(),"Java study",Set.of(bob.getId()));
         assertThatThrownBy(() -> chat.addMembers(bob.getEmail(),room.id(),Set.of(stranger.getId())))

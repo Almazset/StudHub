@@ -190,6 +190,12 @@ public class ChatService {
         String body=text.strip();if(body.isEmpty() || body.length()>4000 || body.indexOf('\0')>=0) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
         message.text=body;message.editedAt=Instant.now();return views(List.of(message),viewer).getFirst();
     }
+    public void deleteMessage(String email, String id, Long messageId) {
+        Long viewer=me(email).getId(); accessible(id,viewer,true);
+        var message=messages.findById(messageId).filter(m -> m.roomId.equals(id)).orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
+        if(!message.senderId.equals(viewer)) throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
+        messages.delete(message);
+    }
     @Transactional(readOnly=true)
     public List<Message> searchMessages(String email,String id,String query) {
         Long viewer=me(email).getId();accessible(id,viewer,false);
