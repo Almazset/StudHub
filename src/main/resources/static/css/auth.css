@@ -75,3 +75,14 @@ html[data-theme="dark"] .auth-refined .auth-card input.is-invalid{border-color:v
 @media(hover:hover) and (pointer:fine){.auth-refined .btn-auth:hover{transform:translateY(-2px);box-shadow:0 12px 24px #20253035}.auth-theme-toggle:hover{transform:translateY(-1px)}}
 .auth-refined .btn-auth:active,.auth-theme-toggle:active{transform:translateY(1px) scale(.985)}
 @media(max-width:540px){.auth-refined .auth-layout{padding-top:80px}.auth-theme-toggle{top:18px;right:16px}}
+
+/* Dark sign-in inspired by a calm charcoal workspace. */
+html[data-theme="dark"] body.auth-refined[data-page="login"] { --accent:#dfbb70; --focus:0 0 0 4px #dfbb7033; background-color:#111112; background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px); background-size:32px 32px; }
+html[data-theme="dark"] body.auth-refined[data-page="login"]::before, html[data-theme="dark"] body.auth-refined[data-page="login"]::after { display:none; }
+html[data-theme="dark"] body.auth-refined[data-page="login"] .auth-card { background:#19191a; border-color:#393939; border-radius:12px; box-shadow:0 18px 55px #0005; }
+html[data-theme="dark"] body.auth-refined[data-page="login"] .auth-card .field-group input { background:#202021; border-color:#49494b; border-radius:8px!important; }
+html[data-theme="dark"] body.auth-refined[data-page="login"] .auth-card .field-group input:focus { border-color:#dfbb70; background:#242425; }
+html[data-theme="dark"] body.auth-refined[data-page="login"] .btn-auth { background:#dfbb70; border-color:#dfbb70; color:#191714; border-radius:8px; }
+html[data-theme="dark"] body.auth-refined[data-page="login"] .btn-auth:hover { background:#ebca83; border-color:#ebca83; color:#191714; }
+html[data-theme="dark"] body.auth-refined[data-page="login"] .auth-switch a { color:#e8c883; }
+html[data-theme="dark"] body.auth-refined[data-page="login"] :is(a,button,summary):focus-visible { outline-color:#e8c883; }
