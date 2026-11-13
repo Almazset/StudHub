@@ -392,3 +392,13 @@ body[data-theme="light"] .btn-light:hover,
 body[data-theme="light"] .btn-outline-secondary:hover {
   background:#e8f2ff; border-color:#82a9db; color:#193e70;
 }
+/* Compact assistant launcher with an expandable label. */
+body .study-assistant .assistant-launcher { position:relative; isolation:isolate; justify-content:flex-end; width:54px; min-width:54px; min-height:54px; padding:0; gap:0; border-radius:18px; background:transparent; box-shadow:none; transform:none; }
+body .study-assistant .assistant-launcher::before { content:""; position:absolute; z-index:-1; top:0; right:0; bottom:0; width:160px; border-radius:18px; background:var(--ink); box-shadow:0 8px 24px #10182825; transform:scaleX(.3375); transform-origin:right center; pointer-events:none; }
+body .study-assistant .assistant-launcher i { display:grid; place-items:center; flex:none; width:54px; height:54px; }
+body .study-assistant .assistant-launcher span { position:absolute; left:15px; right:54px; overflow:hidden; white-space:nowrap; text-align:left; opacity:0; transform:translateX(6px); pointer-events:none; }
+body .study-assistant .assistant-launcher:focus-visible { width:160px; outline:2px solid var(--accent); outline-offset:4px; }
+body .study-assistant .assistant-launcher:focus-visible::before { transform:scaleX(1); }
+body .study-assistant .assistant-launcher:focus-visible span { opacity:1; transform:translateX(0); }
+@media (hover:hover) and (pointer:fine) { body .study-assistant .assistant-launcher:hover { width:160px; transform:none; } body .study-assistant .assistant-launcher:hover::before { transform:scaleX(1); } body .study-assistant .assistant-launcher:hover span { opacity:1; transform:translateX(0); } }
+@media (prefers-reduced-motion:no-preference) { body .study-assistant .assistant-launcher::before, body .study-assistant .assistant-launcher span { transition:transform 180ms cubic-bezier(.22,1,.36,1),opacity 180ms ease; } body .study-assistant .assistant-launcher:focus-visible::before, body .study-assistant .assistant-launcher:focus-visible span { transition:none; } }
