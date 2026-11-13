@@ -392,16 +392,3 @@ body[data-theme="light"] .btn-light:hover,
 body[data-theme="light"] .btn-outline-secondary:hover {
   background:#e8f2ff; border-color:#82a9db; color:#193e70;
 }
-/* Refined dashboard: compact charcoal surfaces with a restrained teal accent. */
-body[data-theme="dark"][data-page="dashboard"] .content { max-width: 1510px; margin-inline: auto; }
-body[data-theme="dark"][data-page="dashboard"] .surface,
-body[data-theme="dark"][data-page="dashboard"] .stat-card,
-body[data-theme="dark"][data-page="dashboard"] .deadline-rail { background:#1c1c1e; border:1px solid #363638; border-radius:10px; box-shadow:none; }
-body[data-theme="dark"][data-page="dashboard"] .stat-card { min-height:112px; padding:18px; }
-body[data-theme="dark"][data-page="dashboard"] .stat-icon { background:#263735; color:#5dd0bc; }
-body[data-theme="dark"][data-page="dashboard"] .stat-card:hover { border-color:#64b4a7; }
-body[data-theme="dark"][data-page="dashboard"] .dashboard-heading .btn-primary { background:#25b8a5; border-color:#25b8a5; color:#10201e; }
-body[data-theme="dark"][data-page="dashboard"] .dashboard-heading .btn-primary:hover { background:#54cdbd; border-color:#54cdbd; }
-body[data-theme="dark"][data-page="dashboard"] .week-day.is-today { border-color:#4f9488; }
-body[data-theme="dark"][data-page="dashboard"] .week-day.is-today .week-day-heading strong { color:#8cdbce; }
-body[data-theme="dark"][data-page="dashboard"] .deadline-rail { min-height:300px; }
