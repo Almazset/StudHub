@@ -9,6 +9,7 @@
   const roomName = room => room.kind==='GLOBAL' ? t('global') : room.name || `${t('member')}${room.peerId ?? ''}`;
   const time = value => new Intl.DateTimeFormat(window.StudHubI18n?.language || 'ru',{hour:'2-digit',minute:'2-digit'}).format(new Date(value));
   let root, life, timer, current=null, meId, rooms=[], detail, rows=[], older=false, opening=0, syncing=false, sending=false, filter='all', signature='';
+  let editing=false;
   const drafts=new Map(), reads=new Map();
   let dialogSequence=0, dialogMode, selected=new Map(), searchTimer, dialogOpener, failedSend=null;
   const $ = selector => root?.querySelector(selector);
@@ -102,7 +103,20 @@
         const menu=node('details','chat-message-actions'), toggle=node('summary','chat-message-toggle');
         toggle.setAttribute('aria-label','Действия с сообщением');toggle.title='Действия с сообщением';toggle.append(icon('chevron-down'));
         const actions=node('div','chat-message-menu');
-        const edit=button('Изменить',async()=>{menu.open=false;const text=prompt('Изменить сообщение',message.text);if(text===null||text===message.text)return;edit.disabled=true;try{const updated=await api(`/rooms/${current}/messages/${message.id}`,'PUT',{text});const index=rows.findIndex(m=>m.id===updated.id);if(index!==-1){rows[index]=updated;renderMessages();}}catch(e){error(e);}finally{edit.disabled=false;}},'chat-action');
+        const edit=button('Изменить',()=>{
+          menu.open=false;if(editing)return;editing=true;const roomId=current;
+          const form=node('form'),input=node('textarea'),actions=node('div'),notice=node('p');
+          input.value=message.text;input.maxLength=4000;input.required=true;input.rows=3;input.setAttribute('aria-label','Текст сообщения');input.style.width='100%';
+          notice.setAttribute('role','alert');const save=button('Сохранить');save.type='submit';
+          const cancel=button('Отмена',()=>{editing=false;renderMessages();});
+          actions.append(save,cancel);form.append(input,actions,notice);body.hidden=true;menu.hidden=true;item.append(form);input.focus();
+          input.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();cancel.click();}});
+          form.addEventListener('submit',async e=>{e.preventDefault();if(!input.value.trim()){notice.textContent='Введите текст сообщения.';return;}save.disabled=true;cancel.disabled=true;
+            try{const updated=await api(`/rooms/${roomId}/messages/${message.id}`,'PUT',{text:input.value});if(current===roomId){const index=rows.findIndex(m=>m.id===updated.id);if(index!==-1)rows[index]=updated;editing=false;renderMessages();}}
+            catch(e){notice.textContent='Не удалось сохранить сообщение. Попробуйте ещё раз.';}
+            finally{save.disabled=false;cancel.disabled=false;}
+          });
+        },'chat-action');
         const remove=button('Удалить',async()=>{menu.open=false;if(!confirm('Удалить сообщение для всех участников?'))return;const id=current;remove.disabled=true;try{await api(`/rooms/${id}/messages/${message.id}`,'DELETE');if(current===id){rows=rows.filter(m=>m.id!==message.id);renderMessages();await refreshList();}}catch(e){error(e);}finally{remove.disabled=false;}},'chat-action');
         actions.append(edit,remove);menu.append(toggle,actions);meta.append(menu);
       }
@@ -124,7 +138,7 @@
   async function openRoom(id) {
     if(!id)return;
     $('[data-chat-search-results]').hidden=true;$('[data-chat-search-close]').hidden=true;$('#chat-message-query').value='';
-    saveDraft();current=id;$('[data-chat-input]').value=drafts.get(id)?.text || '';detail=null;rows=[];older=false;const version=++opening;clearError();
+    editing=false;saveDraft();current=id;$('[data-chat-input]').value=drafts.get(id)?.text || '';detail=null;rows=[];older=false;const version=++opening;clearError();
     root.classList.add('chat-has-room');$('[data-chat-welcome]').hidden=true;$('[data-chat-conversation]').hidden=false;
     $('[data-chat-room-title]').textContent=t('loading');$('[data-chat-room-subtitle]').textContent='';$('[data-chat-room-hint]').textContent='';
     $('[data-chat-members]').hidden=true;$('[data-chat-composer]').hidden=true;$('[data-chat-messages]').replaceChildren(node('p','chat-loading',t('loading')));
@@ -137,13 +151,13 @@
     } catch(e) {if(version===opening){$('[data-chat-room-title]').textContent=t('title');$('[data-chat-messages]').replaceChildren();error(e);}}
   }
   async function sync() {
-    if(syncing||sending||!root?.isConnected||document.hidden)return;
+    if(syncing||sending||editing||!root?.isConnected||document.hidden)return;
     syncing=true;const id=current,version=opening,activeLife=life;
     try {
       await refreshList();
       if(id&&id===current&&detail) {
         const [history,recent]=await Promise.all([api(`/rooms/${id}/messages?after=${rows.at(-1)?.id || 0}`),api(`/rooms/${id}/messages`)]);
-        if(version!==opening||!root?.isConnected)return;
+        if(version!==opening||!root?.isConnected||editing)return;
         const bottom=nearBottom(),box=$('[data-chat-messages]'),top=box.scrollTop;
         const revised=new Map(recent.messages.map(m=>[m.id,m]));let changed=false;
         const earliest=recent.messages[0]?.id;
