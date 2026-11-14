@@ -17,6 +17,10 @@ public class AssignmentPageController {
     private final CourseService courses;
     public AssignmentPageController(AssignmentService service, CourseService courses) { this.service = service; this.courses = courses; }
 
+    @InitBinder("assignment")
+    public void bindAssignment(org.springframework.web.bind.WebDataBinder binder) {
+        binder.setAllowedFields("title", "description", "dueDate", "completed", "priority");
+    }
     @GetMapping public String list(Model model, @RequestParam(required = false) Long course) {
         var assignments = service.findAll();
         model.addAttribute("assignments", assignments);

@@ -1,7 +1,6 @@
 package kz.studhub.service;
 
 import kz.studhub.model.Assignment;
-import kz.studhub.model.AssignmentPriority;
 import kz.studhub.repository.AssignmentRepository;
 import kz.studhub.repository.CourseRepository;
 import org.springframework.stereotype.Service;
@@ -13,11 +12,25 @@ import java.util.List;
 public class AssignmentService {
     private final AssignmentRepository assignments;
     private final CourseRepository courses;
-    public AssignmentService(AssignmentRepository assignments, CourseRepository courses) { this.assignments = assignments; this.courses = courses; }
-    @Transactional(readOnly = true) public List<Assignment> findAll() { return assignments.findAll(); }
-    @Transactional(readOnly = true) public Assignment findById(Long id) { return assignments.findById(id).orElseThrow(() -> new ResourceNotFoundException("Задание не найдено: " + id)); }
-    public Assignment save(Assignment assignment, Long courseId) {
-        if (assignment.getPriority() == null) assignment.setPriority(AssignmentPriority.MEDIUM);
+    private final kz.studhub.repository.UserAccountRepository users;
+    public AssignmentService(AssignmentRepository assignments, CourseRepository courses, kz.studhub.repository.UserAccountRepository users) {
+        this.assignments = assignments; this.courses = courses; this.users = users;
+    }
+    // All callers, including dashboards and APIs, share this ownership boundary.
+    private kz.studhub.model.UserAccount currentOwner() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
+            throw new org.springframework.security.access.AccessDeniedException("Требуется вход");
+        return users.findByEmailIgnoreCase(auth.getName()).orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Аккаунт не найден"));
+    }
+    @Transactional(readOnly = true) public List<Assignment> findAll() { return assignments.findByStudentId(currentOwner().getId()); }
+    @Transactional(readOnly = true) public Assignment findById(Long id) { return assignments.findByIdAndStudentId(id, currentOwner().getId()).orElseThrow(() -> new ResourceNotFoundException("Задание не найдено: " + id)); }
+    public Assignment save(Assignment form, Long courseId) {
+        Assignment assignment = new Assignment();
+        assignment.setStudent(currentOwner());
+        assignment.setTitle(form.getTitle()); assignment.setDescription(form.getDescription());
+        assignment.setDueDate(form.getDueDate()); assignment.setCompleted(form.isCompleted());
+        assignment.setPriority(form.getPriority());
         assignment.setCourse(courses.findById(courseId).orElseThrow(() -> new ResourceNotFoundException("Курс не найден: " + courseId)));
         return assignments.save(assignment);
     }
