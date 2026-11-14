@@ -21,6 +21,7 @@ public class Assignment {
     private String description;
 
     @NotNull @Column(nullable = false)
+    @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
     private LocalDate dueDate;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

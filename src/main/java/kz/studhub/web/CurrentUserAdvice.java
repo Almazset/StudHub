@@ -37,6 +37,7 @@ public class CurrentUserAdvice {
                 || "anonymousUser".equals(authentication.getPrincipal())) {
             return List.of();
         }
+        if (currentUser(authentication) == null) return List.of();
         LocalDate lastDay = LocalDate.now().plusDays(7);
         return assignments.findAll().stream()
                 .filter(assignment -> !assignment.isCompleted() && !assignment.getDueDate().isAfter(lastDay))
