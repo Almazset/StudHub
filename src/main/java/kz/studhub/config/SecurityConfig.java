@@ -19,6 +19,8 @@ public class SecurityConfig {
     @Bean
     PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
 
+    @Bean AuthRateLimiter authRateLimiter() { return new AuthRateLimiter(); }
+
     @Bean DeviceSessionRegistry sessionRegistry() { return new DeviceSessionRegistry(); }
     @Bean HttpSessionEventPublisher httpSessionEventPublisher() { return new HttpSessionEventPublisher(); }
 
@@ -32,7 +34,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, DeviceSessionRegistry registry) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, DeviceSessionRegistry registry, AuthRateLimiter limiter,
+            org.thymeleaf.spring6.SpringTemplateEngine templates) throws Exception {
+        var responses = new AuthResponses(templates);
+        http.addFilterBefore(new AuthRateLimitFilter(limiter, responses),
+                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
         var success = new SavedRequestAwareAuthenticationSuccessHandler();
         success.setDefaultTargetUrl("/");
         success.setAlwaysUseDefaultTargetUrl(true);
@@ -45,6 +51,14 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .formLogin(form -> form.loginPage("/login").authenticationDetailsSource(LoginDetails::new)
+                .failureHandler((request, response, failure) -> {
+                    if (failure instanceof SecondFactorLockedException locked) {
+                        responses.limited(request, response, locked.getRetryAfter());
+                    } else {
+                        // Never save exception details (which may contain credentials) in the session.
+                        response.sendRedirect(request.getContextPath() + "/login?error");
+                    }
+                })
                 .successHandler((request, response, authentication) -> {
                     registry.recordDevice(request.getSession().getId(), request.getHeader("User-Agent"));
                     success.onAuthenticationSuccess(request, response, authentication);

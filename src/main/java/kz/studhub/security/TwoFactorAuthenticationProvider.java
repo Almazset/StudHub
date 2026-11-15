@@ -13,6 +13,10 @@ public class TwoFactorAuthenticationProvider extends DaoAuthenticationProvider {
     protected void additionalAuthenticationChecks(UserDetails user, UsernamePasswordAuthenticationToken authentication) {
         super.additionalAuthenticationChecks(user, authentication);
         String code = authentication.getDetails() instanceof LoginDetails details ? details.getCode() : "";
-        if (!twoFactor.verifyLogin(user.getUsername(), code)) throw new BadCredentialsException("Invalid credentials");
+        if (!twoFactor.verifyLogin(user.getUsername(), code)) {
+            long retry = twoFactor.lockSeconds(user.getUsername());
+            if (retry > 0) throw new SecondFactorLockedException(retry);
+            throw new BadCredentialsException("Invalid credentials");
+        }
     }
 }

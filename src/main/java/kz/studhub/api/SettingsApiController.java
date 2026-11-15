@@ -143,10 +143,18 @@ public class SettingsApiController {
         ticket.setClosed(true); support.save(ticket); return Map.of("saved", true);
     }
     private void requireFactor(Authentication auth, String code) {
-        if (!twoFactor.verifyLogin(auth.getName(), code)) throw new IllegalArgumentException("settings.error.code");
+        if (!twoFactor.verifyLogin(auth.getName(), code)) {
+            long retry = twoFactor.lockSeconds(auth.getName());
+            if (retry > 0) throw new SecondFactorLockedException(retry);
+            throw new IllegalArgumentException("settings.error.code");
+        }
     }
     private Map<String, Object> ticketView(SupportRequest ticket) {
         return Map.of("id", ticket.getId(), "ownerId", ticket.getOwnerId(), "subject", ticket.getSubject(), "message", ticket.getMessage(), "createdAt", ticket.getCreatedAt(), "closed", ticket.isClosed());
+    }
+    @ExceptionHandler(SecondFactorLockedException.class) ResponseEntity<?> factorLocked(SecondFactorLockedException ex) {
+        return ResponseEntity.status(429).header("Retry-After", Long.toString(ex.getRetryAfter()))
+                .cacheControl(CacheControl.noStore()).body(Map.of("error", "settings.error.rateLimit", "retryAfter", ex.getRetryAfter()));
     }
     @ExceptionHandler(IllegalArgumentException.class) ResponseEntity<?> badInput(IllegalArgumentException ex) {
         String key = ex.getMessage() != null && ex.getMessage().startsWith("settings.error.") ? ex.getMessage() : "settings.error.validation";
