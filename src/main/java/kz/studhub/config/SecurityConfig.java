@@ -36,6 +36,8 @@ public class SecurityConfig {
         var success = new SavedRequestAwareAuthenticationSuccessHandler();
         success.setDefaultTargetUrl("/");
         success.setAlwaysUseDefaultTargetUrl(true);
+        var deniedPage = new org.springframework.security.web.access.AccessDeniedHandlerImpl();
+        deniedPage.setErrorPage("/access-denied");
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login", "/register", "/css/**", "/js/**", "/fonts/**", "/img/**", "/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
@@ -49,7 +51,15 @@ public class SecurityConfig {
                 }).permitAll())
             .sessionManagement(session -> session.maximumSessions(-1).sessionRegistry(registry).expiredUrl("/login?expired"))
             .logout(logout -> logout.logoutSuccessUrl("/login?logout").permitAll())
-            .exceptionHandling(ex -> ex.accessDeniedPage("/access-denied"));
+            .exceptionHandling(ex -> ex.accessDeniedHandler((request, response, denied) -> {
+                if (request.getRequestURI().startsWith(request.getContextPath() + "/api/")) {
+                    response.setStatus(403);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"FORBIDDEN\"}");
+                } else {
+                    deniedPage.handle(request, response, denied);
+                }
+            }));
         return http.build();
     }
 }

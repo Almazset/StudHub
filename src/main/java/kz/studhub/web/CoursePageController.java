@@ -21,6 +21,10 @@ public class CoursePageController {
         this.assignments = assignments;
     }
 
+    @InitBinder("course")
+    public void bindCourse(org.springframework.web.bind.WebDataBinder binder) {
+        binder.setAllowedFields("title", "description", "teacherName", "externalUrl");
+    }
     @GetMapping public String list(Model model) { model.addAttribute("courses", service.findAll()); return "courses"; }
     @GetMapping("/{id}") public String detail(@PathVariable Long id, Model model) {
         var course = service.findById(id);
@@ -36,16 +40,21 @@ public class CoursePageController {
                 : Math.round(completed * 100.0 / courseAssignments.size()));
         return "course-detail";
     }
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/new") public String createForm(Model model) { model.addAttribute("course", new Course()); return "course-form"; }
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @PostMapping public String create(@Valid @ModelAttribute Course course, BindingResult result) {
         if (result.hasErrors()) return "course-form";
         service.save(course); return "redirect:/courses?saved";
     }
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}/edit") public String editForm(@PathVariable Long id, Model model) { model.addAttribute("course", service.findById(id)); return "course-form"; }
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}") public String update(@PathVariable Long id, @Valid @ModelAttribute Course course, BindingResult result) {
         course.setId(id);
         if (result.hasErrors()) return "course-form";
         service.update(id, course); return "redirect:/courses?saved";
     }
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/delete") public String delete(@PathVariable Long id) { service.delete(id); return "redirect:/courses?deleted"; }
 }

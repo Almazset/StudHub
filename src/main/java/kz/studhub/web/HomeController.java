@@ -71,7 +71,7 @@ public class HomeController {
         model.addAttribute("today", today);
         return "index";
     }
-    @GetMapping("/access-denied") public String denied() { return "access-denied"; }
+    @org.springframework.web.bind.annotation.RequestMapping("/access-denied") public String denied() { return "access-denied"; }
 
     public record ProjectLink(Long id, String title) {}
 
