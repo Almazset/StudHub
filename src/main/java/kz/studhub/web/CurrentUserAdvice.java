@@ -31,6 +31,12 @@ public class CurrentUserAdvice {
         return users.findByEmailIgnoreCase(authentication.getName()).orElse(null);
     }
 
+    @ModelAttribute("canManageCourses")
+    public boolean canManageCourses(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
     @ModelAttribute("deadlineAlerts")
     public List<Assignment> deadlineAlerts(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()

@@ -33,8 +33,8 @@
   <section class="surface news-home" data-dashboard-courses>
     <div class="news-home-header"><h3 th:text="#{dashboard.catalogTitle}">Доступные курсы</h3><a th:href="@{/courses}" th:text="#{dashboard.allCourses}">Весь каталог →</a></div>
     <p class="muted-copy" th:if="${courseCount > 0}" th:text="#{dashboard.catalogHint}">Общедоступный каталог StudHub. Задания и прогресс по курсам — ваши личные.</p>
-    <p class="muted-copy" th:if="${courseCount == 0}" th:text="#{dashboard.noCourses}">В каталоге пока нет курсов. Добавьте первый курс, чтобы планировать задания.</p>
-    <a class="btn btn-light" th:if="${courseCount == 0}" th:href="@{/courses/new}" th:text="#{dashboard.createCourse}">Добавить курс</a>
+    <p class="muted-copy" th:if="${courseCount == 0}" th:text="${canManageCourses} ? #{dashboard.noCourses} : #{courses.awaitAdmin}">В каталоге пока нет курсов. Добавьте первый курс, чтобы планировать задания.</p>
+    <a class="btn btn-light" th:if="${courseCount == 0 and canManageCourses}" th:href="@{/courses/new}" th:text="#{dashboard.createCourse}">Добавить курс</a>
     <div class="news-home-links" th:if="${courseCount > 0}"><a th:each="course : ${availableCourses}" th:href="@{/courses/{id}(id=${course.id})}"><small th:text="${course.teacherName}">Преподаватель</small><strong th:text="${course.title}">Курс</strong></a></div>
   </section>
 </main>

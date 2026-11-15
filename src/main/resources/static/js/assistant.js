@@ -23,6 +23,15 @@
   const messages = root.querySelector('[data-assistant-messages]');
   const form = root.querySelector('form');
   const errorBox = root.querySelector('[data-ai-error]');
+  const accountId = document.querySelector('meta[name="studhub-account-id"]')?.content;
+  const draftKey = accountId ? 'studhub-assistant-draft:' + accountId : null;
+  // Discard legacy drafts and drafts from a previous account in this tab.
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key === 'studhub-assistant-draft' ||
+          (key.startsWith('studhub-assistant-draft:') && key !== draftKey)) sessionStorage.removeItem(key);
+    }
+  } catch {}
   let mode = 'summary', files = [], history = [], configured = false, connection = 'checking', busy = false;
   let controller, sequence = 0, lastFailure, statusPromise, guideShown = false;
   const node = (tag,className,text) => { const result = document.createElement(tag); if (className) result.className = className; if (text !== undefined) result.textContent = text; return result; };
@@ -113,7 +122,7 @@
       add.addEventListener('click',() => {
         close(false);
         if (preview) window.previewApp.openAssignmentDraft(task);
-        else { sessionStorage.setItem('studhub-assistant-draft',JSON.stringify(task)); location.assign('/assignments/new?assistantDraft=1'); }
+        else { draftKey && sessionStorage.setItem(draftKey,JSON.stringify(task)); location.assign('/assignments/new?assistantDraft=1'); }
       }); card.append(add); article.append(card);
     });
     const plain = answer.text + (answer.tasks.length ? '\n\n' + answer.tasks.map(task => `${task.title}\n${task.description}`).join('\n\n') : '');
@@ -194,12 +203,12 @@
   updateLabels(); emptyState(); chooseMode(mode);
   if (!preview && location.pathname === '/assignments/new' && new URLSearchParams(location.search).has('assistantDraft')) {
     try {
-      const task = JSON.parse(sessionStorage.getItem('studhub-assistant-draft') || 'null');
-      sessionStorage.removeItem('studhub-assistant-draft');
+      const task = JSON.parse((draftKey && sessionStorage.getItem(draftKey)) || 'null');
+      if (draftKey) sessionStorage.removeItem(draftKey);
       if (task && typeof task.title === 'string' && task.title.length <= 150 && typeof task.description === 'string' && task.description.length <= 1400) {
         const title = document.querySelector('input[name="title"]'), description = document.querySelector('textarea[name="description"]');
         if (title && description) { title.value = task.title; description.value = task.description; description.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('[name="courseId"]')?.focus(); }
       }
-    } catch { sessionStorage.removeItem('studhub-assistant-draft'); }
+    } catch { if (draftKey) sessionStorage.removeItem(draftKey); }
   }
 })();

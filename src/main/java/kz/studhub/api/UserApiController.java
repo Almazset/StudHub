@@ -13,10 +13,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
+@org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
 public class UserApiController {
     private final UserAccountRepository users;
     private final PasswordEncoder encoder;
-    public UserApiController(UserAccountRepository users, PasswordEncoder encoder) { this.users = users; this.encoder = encoder; }
+    private final kz.studhub.security.AccountSessions sessions;
+    public UserApiController(UserAccountRepository users, PasswordEncoder encoder, kz.studhub.security.AccountSessions sessions) {
+        this.users = users; this.encoder = encoder; this.sessions = sessions;
+    }
 
     @GetMapping public List<UserView> all() { return users.findAll().stream().map(UserView::from).toList(); }
     @GetMapping("/{id}") public UserView one(@PathVariable Long id) { return UserView.from(find(id)); }
@@ -28,13 +32,18 @@ public class UserApiController {
     }
     @PutMapping("/{id}") public UserView update(@PathVariable Long id, @Valid @RequestBody UserUpdate req) {
         UserAccount u = find(id);
+        String previousEmail = u.getEmail();
+        Role previousRole = u.getRole();
         users.findByEmailIgnoreCase(req.email()).filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> { throw new IllegalArgumentException("Email уже используется"); });
         u.setFullName(req.fullName()); u.setEmail(req.email().toLowerCase());
         if (req.role() != null) u.setRole(req.role());
-        return UserView.from(users.save(u));
+        UserView saved = UserView.from(users.save(u));
+        if (!previousEmail.equalsIgnoreCase(u.getEmail()) || previousRole != u.getRole())
+            sessions.revokeAll(previousEmail);
+        return saved;
     }
-    @DeleteMapping("/{id}") public void delete(@PathVariable Long id) { users.delete(find(id)); }
+    @DeleteMapping("/{id}") public void delete(@PathVariable Long id) { var user = find(id); users.delete(user); sessions.revokeAll(user.getEmail()); }
 
     private UserAccount find(Long id) { return users.findById(id).orElseThrow(() -> new kz.studhub.service.ResourceNotFoundException("Пользователь не найден: " + id)); }
     public record UserRequest(@NotBlank @Size(min=2,max=80) String fullName, @NotBlank @Email @Size(max=120) String email,

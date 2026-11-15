@@ -76,4 +76,24 @@ class AssistantApiSecurityTest {
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("FILE_FORMAT"));
         verify(gemini,never()).answer(any(),any());
     }
+
+    @Test void uploadedLectureIsNotReusedForAnotherAccount() throws Exception {
+        var other = new UserAccount(); other.setId(2L); other.setEmail("other@example.com");
+        when(users.findByEmailIgnoreCase(other.getEmail())).thenReturn(Optional.of(other));
+        var upload = new MockMultipartFile("files","private.txt","text/plain","PRIVATE_LECTURE".getBytes());
+        when(files.readAll(any())).thenAnswer(call -> {
+            List<org.springframework.web.multipart.MultipartFile> supplied = call.getArgument(0);
+            return supplied == null || supplied.isEmpty() ? List.of()
+                : List.of(new LectureFileReader.Lecture("private.txt","text/plain",null,"PRIVATE_LECTURE"));
+        });
+        mvc.perform(multipart("/api/assistant/messages").file(request("summary")).file(upload)
+            .with(user("student@example.com")).with(csrf())).andExpect(status().isOk());
+        mvc.perform(multipart("/api/assistant/messages").file(request("summary"))
+            .with(user(other.getEmail())).with(csrf())).andExpect(status().isOk());
+        @SuppressWarnings({"unchecked","rawtypes"})
+        org.mockito.ArgumentCaptor<List<LectureFileReader.Lecture>> sent = org.mockito.ArgumentCaptor.forClass((Class)List.class);
+        verify(gemini,times(2)).answer(any(),sent.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("PRIVATE_LECTURE",sent.getAllValues().get(0).getFirst().text());
+        org.junit.jupiter.api.Assertions.assertTrue(sent.getAllValues().get(1).isEmpty());
+    }
 }
