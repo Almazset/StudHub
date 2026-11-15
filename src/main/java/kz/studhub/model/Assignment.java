@@ -24,8 +24,8 @@ public class Assignment {
     @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
     private LocalDate dueDate;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "course_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id")
     private Course course;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,6 +39,13 @@ public class Assignment {
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
     private AssignmentPriority priority = AssignmentPriority.MEDIUM;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private AssignmentStatus status;
+
+    public AssignmentStatus getStatus() { return status == null ? (completed ? AssignmentStatus.DONE : AssignmentStatus.TODO) : status; }
+    public void setStatus(AssignmentStatus status) { this.status = status; this.completed = status == AssignmentStatus.DONE; }
 
     public Assignment() {}
     public Long getId() { return id; }
@@ -54,7 +61,7 @@ public class Assignment {
     public UserAccount getStudent() { return student; }
     public void setStudent(UserAccount student) { this.student = student; }
     public boolean isCompleted() { return completed; }
-    public void setCompleted(boolean completed) { this.completed = completed; }
+    public void setCompleted(boolean completed) { this.completed = completed; this.status = completed ? AssignmentStatus.DONE : AssignmentStatus.TODO; }
     public AssignmentPriority getPriority() { return priority == null ? AssignmentPriority.MEDIUM : priority; }
     public void setPriority(AssignmentPriority priority) { this.priority = priority; }
 }

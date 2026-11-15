@@ -67,7 +67,7 @@
       <div class="topbar-popover notification-popover" id="topbarNotifications" data-panel="notifications" hidden>
         <div class="popover-heading"><h2 th:text="#{topbar.notifications}">Уведомления</h2><a th:href="@{/assignments}" th:text="#{dashboard.deadlinesAll}">Все задания</a></div>
         <p class="popover-empty" th:if="${#lists.isEmpty(deadlineAlerts)}" th:text="#{topbar.noNotifications}">Ближайших дедлайнов нет.</p>
-        <a class="notification-item" th:each="a : ${deadlineAlerts}" th:href="@{/assignments/{id}/edit(id=${a.id})}"><span class="notification-icon"><i class="bi bi-calendar-event"></i></span><span><strong th:text="${a.title}">Задание</strong><small><span th:text="${a.course.title}">Курс</span> · <time th:datetime="${a.dueDate}" th:text="${#temporals.format(a.dueDate, 'd MMM')}">25 окт.</time></small></span></a>
+        <a class="notification-item" th:each="a : ${deadlineAlerts}" th:href="@{/assignments/{id}/edit(id=${a.id})}"><span class="notification-icon"><i class="bi bi-calendar-event"></i></span><span><strong th:text="${a.title}">Задание</strong><small><span th:text="${a.course != null ? a.course.title : 'Личное задание'}">Курс</span> · <time th:datetime="${a.dueDate}" th:text="${#temporals.format(a.dueDate, 'd MMM')}">25 окт.</time></small></span></a>
       </div>
     </div>
     <div class="topbar-tool">

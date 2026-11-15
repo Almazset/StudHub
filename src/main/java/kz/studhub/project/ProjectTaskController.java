@@ -13,7 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProjectTaskController {
  private final ProjectRepository projects; private final ProjectTaskRepository tasks; private final UserAccountRepository users;
  public ProjectTaskController(ProjectRepository p,ProjectTaskRepository t,UserAccountRepository u){projects=p;tasks=t;users=u;}
- public record Create(@NotBlank @Size(max=150) String title, @Positive Long assigneeId, LocalDate dueDate) {}
+ public record Create(@NotBlank @Size(max=150) String title, @Positive Long assigneeId, LocalDate dueDate, kz.studhub.model.AssignmentPriority priority) {}
  public record Change(@NotBlank @Pattern(regexp="TODO|IN_PROGRESS|REVIEW|DONE") String status) {}
  private Project access(Long id,Authentication auth,boolean lock){
   var viewer=users.findByEmailIgnoreCase(auth.getName()).orElseThrow();
@@ -22,20 +22,20 @@ public class ProjectTaskController {
   return project;
  }
  private Map<String,Object> view(ProjectTask t){
-  Map<String,Object> v=new LinkedHashMap<>();v.put("id",t.id);v.put("title",t.title);v.put("assigneeId",t.assigneeId);v.put("dueDate",t.dueDate);v.put("status",t.status);return v;
+  Map<String,Object> v=new LinkedHashMap<>();v.put("id",t.id);v.put("title",t.title);v.put("assigneeId",t.assigneeId);v.put("dueDate",t.dueDate);v.put("status",t.status);v.put("priority",t.priority==null?kz.studhub.model.AssignmentPriority.MEDIUM:t.priority);return v;
  }
  @GetMapping @Transactional(readOnly=true) public List<Map<String,Object>> list(@PathVariable Long projectId,Authentication auth){access(projectId,auth,false);return tasks.findByProjectIdOrderByIdDesc(projectId).stream().map(this::view).toList();}
  @PostMapping @Transactional public Map<String,Object> create(@PathVariable Long projectId,Authentication auth,@Valid @RequestBody Create input){
   var p=access(projectId,auth,true);if(input.assigneeId()!=null&&!p.memberIds.contains(input.assigneeId()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Исполнитель должен быть участником проекта");
   var title=input.title().strip();if(title.isEmpty())throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-  var t=new ProjectTask();t.projectId=projectId;t.title=title;t.assigneeId=input.assigneeId();t.dueDate=input.dueDate();return view(tasks.saveAndFlush(t));
+  var t=new ProjectTask();t.projectId=projectId;t.title=title;t.assigneeId=input.assigneeId();t.dueDate=input.dueDate();t.priority=input.priority()==null?kz.studhub.model.AssignmentPriority.MEDIUM:input.priority();return view(tasks.saveAndFlush(t));
  }
  @PutMapping("/{taskId}") @Transactional public Map<String,Object> edit(@PathVariable Long projectId,@PathVariable Long taskId,Authentication auth,@Valid @RequestBody Create input){
   var p=access(projectId,auth,true);
   if(input.assigneeId()!=null&&!p.memberIds.contains(input.assigneeId()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Исполнитель должен быть участником проекта");
   String title=input.title().strip();if(title.isEmpty())throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
   var t=tasks.findByIdAndProjectId(taskId,projectId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
-  t.title=title;t.assigneeId=input.assigneeId();t.dueDate=input.dueDate();return view(t);
+  t.title=title;t.assigneeId=input.assigneeId();t.dueDate=input.dueDate();t.priority=input.priority()==null?kz.studhub.model.AssignmentPriority.MEDIUM:input.priority();return view(t);
  }
  @DeleteMapping("/{taskId}") @Transactional public Map<String,Boolean> delete(@PathVariable Long projectId,@PathVariable Long taskId,Authentication auth){
   var p=access(projectId,auth,true);
