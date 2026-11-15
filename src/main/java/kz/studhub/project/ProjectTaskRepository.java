@@ -4,5 +4,6 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 public interface ProjectTaskRepository extends JpaRepository<ProjectTask,Long> {
  List<ProjectTask> findByProjectIdOrderByIdDesc(Long projectId);
+ List<ProjectTask> findByProjectIdInOrderByIdDesc(java.util.Collection<Long> projectIds);
  Optional<ProjectTask> findByIdAndProjectId(Long id, Long projectId);
 }

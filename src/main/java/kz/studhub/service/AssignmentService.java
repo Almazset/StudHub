@@ -29,16 +29,16 @@ public class AssignmentService {
         Assignment assignment = new Assignment();
         assignment.setStudent(currentOwner());
         assignment.setTitle(form.getTitle()); assignment.setDescription(form.getDescription());
-        assignment.setDueDate(form.getDueDate()); assignment.setCompleted(form.isCompleted());
+        assignment.setDueDate(form.getDueDate()); assignment.setStatus(form.getStatus());
         assignment.setPriority(form.getPriority());
-        assignment.setCourse(courses.findById(courseId).orElseThrow(() -> new ResourceNotFoundException("Курс не найден: " + courseId)));
+        assignment.setCourse(courseId == null ? null : courses.findById(courseId).orElseThrow(() -> new ResourceNotFoundException("Курс не найден: " + courseId)));
         return assignments.save(assignment);
     }
     public Assignment update(Long id, Assignment form, Long courseId) {
         Assignment a = findById(id);
-        a.setTitle(form.getTitle()); a.setDescription(form.getDescription()); a.setDueDate(form.getDueDate()); a.setCompleted(form.isCompleted());
+        a.setTitle(form.getTitle()); a.setDescription(form.getDescription()); a.setDueDate(form.getDueDate()); a.setStatus(form.getStatus());
         a.setPriority(form.getPriority());
-        a.setCourse(courses.findById(courseId).orElseThrow(() -> new ResourceNotFoundException("Курс не найден: " + courseId)));
+        a.setCourse(courseId == null ? null : courses.findById(courseId).orElseThrow(() -> new ResourceNotFoundException("Курс не найден: " + courseId)));
         return assignments.save(a);
     }
     public void toggleCompleted(Long id) {

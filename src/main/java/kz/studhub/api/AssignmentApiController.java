@@ -24,11 +24,11 @@ public class AssignmentApiController {
 
     // Explicit response fields keep persistence proxies and account data out of JSON.
     public record AssignmentResponse(Long id, String title, String description, java.time.LocalDate dueDate,
-                                     boolean completed, AssignmentPriority priority, CourseResponse course) {
+                                     boolean completed, AssignmentPriority priority, kz.studhub.model.AssignmentStatus status, CourseResponse course) {
         static AssignmentResponse from(Assignment a) {
             var c = a.getCourse();
             return new AssignmentResponse(a.getId(), a.getTitle(), a.getDescription(), a.getDueDate(),
-                a.isCompleted(), a.getPriority(), new CourseResponse(c.getId(), c.getTitle(),
+                a.isCompleted(), a.getPriority(), a.getStatus(), c == null ? null : new CourseResponse(c.getId(), c.getTitle(),
                 c.getDescription(), c.getTeacherName(), c.getExternalUrl()));
         }
     }
@@ -36,10 +36,10 @@ public class AssignmentApiController {
 
     public record AssignmentRequest(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(min=2,max=150) String title,
         @jakarta.validation.constraints.Size(max=1500) String description, @jakarta.validation.constraints.NotNull java.time.LocalDate dueDate,
-        @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Positive Long courseId, boolean completed, AssignmentPriority priority) {
+        @jakarta.validation.constraints.Positive Long courseId, boolean completed, AssignmentPriority priority, kz.studhub.model.AssignmentStatus status) {
         Assignment toAssignment() {
             Assignment a = new Assignment(); a.setTitle(title); a.setDescription(description);
-            a.setDueDate(dueDate); a.setCompleted(completed); a.setPriority(priority); return a;
+            a.setDueDate(dueDate); a.setCompleted(completed); a.setPriority(priority); if (status != null) a.setStatus(status); return a;
         }
     }
 }

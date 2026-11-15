@@ -29,7 +29,7 @@ public class CoursePageController {
     @GetMapping("/{id}") public String detail(@PathVariable Long id, Model model) {
         var course = service.findById(id);
         var courseAssignments = assignments.findAll().stream()
-                .filter(assignment -> assignment.getCourse().getId().equals(id))
+                .filter(assignment -> assignment.getCourse() != null && assignment.getCourse().getId().equals(id))
                 .sorted(Comparator.comparing(Assignment::getDueDate))
                 .toList();
         model.addAttribute("course", course);

@@ -335,6 +335,7 @@
     const rows = [...assignmentList.querySelectorAll('.assignment-row')];
     const search = document.querySelector('[data-assignment-search]');
     const courseSelect = document.querySelector('[data-course-filter]');
+    const typeSelect = document.querySelector('[data-task-type-filter]');
     const prioritySelect = document.querySelector('[data-priority-filter]');
     const filterEmpty = document.querySelector('.filter-empty');
     const initialEmpty = document.querySelector('.list-empty');
@@ -364,8 +365,8 @@
       document.querySelector('[data-calendar-empty]')?.toggleAttribute('hidden', filteredRows.length > 0);
       const monthPrefix = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-`;
       const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const monthCount = filteredRows.filter((row) => row.dataset.due.startsWith(monthPrefix)).length;
-      const overdueCount = filteredRows.filter((row) => row.dataset.completed !== 'true' && row.dataset.due < todayKey).length;
+      const monthCount = filteredRows.filter((row) => (row.dataset.due || '').startsWith(monthPrefix)).length;
+      const overdueCount = filteredRows.filter((row) => row.dataset.completed !== 'true' && row.dataset.due && row.dataset.due < todayKey).length;
       document.querySelector('[data-calendar-month-count]')?.replaceChildren(String(monthCount));
       document.querySelector('[data-calendar-overdue-count]')?.replaceChildren(String(overdueCount));
       document.querySelector('[data-calendar-done-count]')?.replaceChildren(String(filteredRows.filter((row) => row.dataset.completed === 'true').length));
@@ -384,7 +385,7 @@
           const task = document.createElement('a');
           task.className = `calendar-task priority-${(row.dataset.priority || 'MEDIUM').toLowerCase()}`;
           if (row.dataset.completed === 'true') task.classList.add('is-complete');
-          task.href = `/assignments/${encodeURIComponent(row.dataset.id)}/edit`;
+          task.href = row.dataset.editUrl || `/assignments/${encodeURIComponent(row.dataset.id)}/edit`;
           task.textContent = row.dataset.title;
           task.title = `${row.dataset.title} · ${row.dataset.courseName}`;
           dayCell.append(task);
@@ -437,11 +438,11 @@
       rows.forEach((row) => {
         const completed = row.dataset.completed === 'true';
         const days = Math.floor((new Date(`${row.dataset.due}T00:00:00`) - now) / 86400000);
-        const statusMatch = statusFilter === 'all' || (statusFilter === 'completed' ? completed : statusFilter === 'overdue' ? (!completed && days < 0) : (!completed && days >= 0));
+        const statusMatch = statusFilter === 'all' || (statusFilter === 'mine' ? row.dataset.mine === 'true' : statusFilter === 'assigned' ? row.dataset.assigned === 'true' : statusFilter === 'completed' ? completed : statusFilter === 'overdue' ? (!completed && days < 0) : !completed);
         const queryMatch = `${row.dataset.title} ${row.dataset.courseName}`.toLocaleLowerCase('ru').includes(query);
         const courseMatch = !course || row.dataset.course === course;
         const priorityMatch = !priority || row.dataset.priority === priority;
-        const visible = statusMatch && queryMatch && courseMatch && priorityMatch;
+        const visible = statusMatch && queryMatch && courseMatch && priorityMatch && (!typeSelect?.value || row.dataset.type === typeSelect.value);
         row.classList.toggle('d-none', !visible);
         if (visible) shown++;
       });
@@ -452,7 +453,7 @@
     };
     document.querySelectorAll('[data-assignment-filter]').forEach((button) => button.addEventListener('click', () => {
       statusFilter = button.dataset.assignmentFilter;
-      document.querySelectorAll('[data-assignment-filter]').forEach((item) => item.classList.toggle('active', item === button));
+      document.querySelectorAll('[data-assignment-filter]').forEach((item) => { item.classList.toggle('active', item === button); item.setAttribute('aria-pressed', String(item === button)); });
       applyFilters();
     }));
     search?.addEventListener('input', debounce(applyFilters));
@@ -461,19 +462,21 @@
       applyFilters();
     }
     courseSelect?.addEventListener('change', applyFilters);
+    typeSelect?.addEventListener('change', applyFilters);
     prioritySelect?.addEventListener('change', applyFilters);
     document.querySelector('[data-reset-filters]')?.addEventListener('click', () => {
       statusFilter = 'all';
       if (search) search.value = '';
       if (courseSelect) courseSelect.value = '';
       if (prioritySelect) prioritySelect.value = '';
-      document.querySelectorAll('[data-assignment-filter]').forEach((item) => item.classList.toggle('active', item.dataset.assignmentFilter === 'all'));
+      if (typeSelect) typeSelect.value = '';
+      document.querySelectorAll('[data-assignment-filter]').forEach((item) => { item.classList.toggle('active', item.dataset.assignmentFilter === 'all'); item.setAttribute('aria-pressed', String(item.dataset.assignmentFilter === 'all')); });
       applyFilters();
     });
     const sortBy = (key, ascending) => {
       rows.sort((a, b) => {
-        const left = key === 'due' ? a.dataset.due : key === 'course' ? a.dataset.courseName : key === 'priority' ? a.dataset.priority : a.dataset.title;
-        const right = key === 'due' ? b.dataset.due : key === 'course' ? b.dataset.courseName : key === 'priority' ? b.dataset.priority : b.dataset.title;
+        const left = key === 'due' ? (a.dataset.due || '9999-12-31') : key === 'course' ? a.dataset.courseName : key === 'priority' ? a.dataset.priority : a.dataset.title;
+        const right = key === 'due' ? (b.dataset.due || '9999-12-31') : key === 'course' ? b.dataset.courseName : key === 'priority' ? b.dataset.priority : b.dataset.title;
         const comparison = key === 'priority' ? ({ LOW: 1, MEDIUM: 2, HIGH: 3 }[left] - { LOW: 1, MEDIUM: 2, HIGH: 3 }[right]) : key === 'due' ? left.localeCompare(right) : left.localeCompare(right, 'ru');
         return ascending ? comparison : -comparison;
       }).forEach((row) => assignmentList.append(row));

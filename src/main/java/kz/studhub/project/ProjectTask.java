@@ -9,5 +9,6 @@ public class ProjectTask {
  Long assigneeId;
  LocalDate dueDate;
  @Column(nullable=false,length=20) String status="TODO";
+ @Enumerated(EnumType.STRING) @Column(length=10) kz.studhub.model.AssignmentPriority priority;
  protected ProjectTask() {}
 }

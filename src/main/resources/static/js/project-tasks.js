@@ -18,7 +18,7 @@
  function button(text,action){const b=node('button',text,'btn btn-light');b.type='button';b.addEventListener('click',()=>action(b));return b;}
  const overdue=t=>{const d=new Date(),today=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');return t.status!=='DONE'&&t.dueDate&&t.dueDate<today;};
  function cancelEdit(){editing=null;form.reset();form.querySelector('[type=submit]').textContent='Добавить задачу';form.querySelector('[data-task-cancel]').hidden=true;}
- function editTask(task){editing=task.id;form.elements.title.value=task.title;form.elements.assigneeId.value=task.assigneeId??'';form.elements.dueDate.value=task.dueDate??'';form.querySelector('[type=submit]').textContent='Сохранить задачу';form.querySelector('[data-task-cancel]').hidden=false;form.elements.title.focus();}
+ function editTask(task){editing=task.id;form.elements.title.value=task.title;form.elements.assigneeId.value=task.assigneeId??'';form.elements.dueDate.value=task.dueDate??'';form.elements.priority.value=task.priority||'MEDIUM';form.querySelector('[type=submit]').textContent='Сохранить задачу';form.querySelector('[data-task-cancel]').hidden=false;form.elements.title.focus();}
  function render(){
   const done=rows.filter(t=>t.status==='DONE').length,percent=rows.length?Math.round(done/rows.length*100):0;
   root.querySelector('[data-project-progress]').textContent=rows.length?`Готово ${done} из ${rows.length} · ${percent}% · Просрочено: ${rows.filter(overdue).length}`:'Задач пока нет — добавьте первую задачу команды.';
@@ -29,7 +29,8 @@
   if(!filtered.length){list.append(node('p',rows.length?'По выбранным условиям задач нет.':'Добавьте задачу, назначьте исполнителя и срок.','muted-copy'));return;}
   filtered.forEach(task=>{
    const row=node('article',null,'project-task-row'),info=node('div'),title=node('strong',task.title),assignee=[...form.elements.assigneeId.options].find(o=>o.value===String(task.assigneeId));
-   const meta=node('small',[task.assigneeId?(assignee?.textContent||'Участник'):'Не назначен',task.dueDate?`Срок: ${task.dueDate.split('-').reverse().join('.')}`:'Без срока',overdue(task)?'Просрочено':''].filter(Boolean).join(' · '));
+   row.id=`task-${task.id}`;
+   const meta=node('small',[({LOW:'Низкий',MEDIUM:'Средний',HIGH:'Высокий'}[task.priority||'MEDIUM'])+' приоритет',task.assigneeId?(assignee?.textContent||'Участник'):'Не назначен',task.dueDate?`Срок: ${task.dueDate.split('-').reverse().join('.')}`:'Без срока',overdue(task)?'Просрочено':''].filter(Boolean).join(' · '));
    if(overdue(task))meta.className='project-error';info.append(title,meta);
    const controls=node('div',null,'project-task-controls'),select=node('select');select.setAttribute('aria-label',`Статус задачи ${task.title}`);
    for(const [value,label] of Object.entries(statuses)){const option=node('option',label);option.value=value;option.selected=task.status===value;select.append(option);}
@@ -39,12 +40,12 @@
    row.append(info,controls);list.append(row);
   });
  }
- async function load(){rows=await request(base);render();}
+ async function load(){rows=await request(base);render();const target=/^#task-\d+$/.test(location.hash)?document.getElementById(location.hash.slice(1)):null;if(target){target.tabIndex=-1;target.focus({preventScroll:true});target.scrollIntoView({block:'center'});}}
  root.querySelectorAll('[data-task-search],[data-task-filter],[data-task-mine],[data-task-overdue]').forEach(el=>el.addEventListener('input',render));
  form.querySelector('[data-task-cancel]').addEventListener('click',cancelEdit);
  form.addEventListener('submit',async e=>{
   e.preventDefault();const title=form.elements.title.value.trim();if(!title)return;const btn=form.querySelector('[type=submit]');btn.disabled=true;
-  try{error.hidden=true;await request(editing?`${base}/${editing}`:base,editing?'PUT':'POST',{title,assigneeId:form.elements.assigneeId.value?Number(form.elements.assigneeId.value):null,dueDate:form.elements.dueDate.value||null});cancelEdit();await load();}catch(e){showError(e);}finally{btn.disabled=false;}
+  try{error.hidden=true;await request(editing?`${base}/${editing}`:base,editing?'PUT':'POST',{title,assigneeId:form.elements.assigneeId.value?Number(form.elements.assigneeId.value):null,dueDate:form.elements.dueDate.value||null,priority:form.elements.priority.value});cancelEdit();await load();}catch(e){showError(e);}finally{btn.disabled=false;}
  });
  const teamError=document.querySelector('[data-team-error]');
  async function teamAction(btn,action){btn.disabled=true;teamError.hidden=true;try{await action();}catch(e){teamError.textContent=e.message;teamError.hidden=false;}finally{btn.disabled=false;}}
