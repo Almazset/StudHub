@@ -6,3 +6,9 @@ target/
 .m2/
 
 .vs/
+
+# Database backups and recovery secrets must never enter Git.
+backups/
+*.dump
+*.backup
+*.key
