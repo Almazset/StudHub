@@ -96,6 +96,7 @@
     errorPhotoFormat: ['Поддерживаются только изображения JPG и PNG.', 'Only JPG and PNG images are supported.', 'Тек JPG және PNG суреттері қолданылады.'],
     errorExpired: ['Время настройки истекло. Начните подключение заново.', 'Setup has expired. Please start again.', 'Баптау уақыты аяқталды. Қайта бастаңыз.'],
     errorValidation: ['Проверьте заполненные поля.', 'Please check the form fields.', 'Толтырылған өрістерді тексеріңіз.'],
+    errorRateLimit: ['Слишком много попыток. Повторите через {seconds} сек.', 'Too many attempts. Try again in {seconds} seconds.', 'Әрекеттер тым көп. {seconds} секундтан кейін қайталаңыз.'],
     errorSupportLimit: ['Можно создать до 5 обращений в сутки.', 'You can submit up to 5 requests per day.', 'Тәулігіне 5 өтінішке дейін жіберуге болады.'],
     sessionExpired: ['Сеанс завершён. Войдите снова.', 'Your session has ended. Please sign in again.', 'Сеанс аяқталды. Қайта кіріңіз.']
   };

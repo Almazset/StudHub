@@ -4,6 +4,7 @@
   document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
   document.addEventListener('DOMContentLoaded', () => {
     const button = document.querySelector('.auth-theme-toggle');
+    if (!button) return;
     const sync = () => {
       const dark = document.documentElement.dataset.theme === 'dark';
       button.setAttribute('aria-pressed', String(dark));

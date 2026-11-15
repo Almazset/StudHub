@@ -12,6 +12,7 @@
   let appearanceQueue = Promise.resolve();
   const errorKeys = {password:'errorPassword',emailUsed:'errorEmail',passwordMismatch:'errorMismatch',passwordLength:'errorLength',passwordSame:'errorSame',code:'errorCode',photoSize:'errorPhotoSize',photoFormat:'errorPhotoFormat',enrollmentExpired:'errorExpired',validation:'errorValidation',supportLimit:'errorSupportLimit',session:'sessionExpired',alreadyEnabled:'enabled'};
   function errorText(error) {
+    if (error?.retryAfter) return t('errorRateLimit', {seconds: error.retryAfter});
     const key = error?.message || '';
     return key.startsWith('settings.error.') ? t(errorKeys[key.slice(15)] || 'failed') : t(key === 'sessionExpired' ? key : 'failed');
   }
@@ -25,7 +26,11 @@
     const response = await fetch(`/api/settings${path}`, {method, credentials:'same-origin', cache:'no-store', headers, body:payload ? multipart ? payload : JSON.stringify(payload) : undefined});
     if (response.redirected || response.status === 401 || response.headers.get('content-type')?.includes('text/html')) throw new Error('sessionExpired');
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'failed');
+    if (!response.ok) {
+      const error = new Error(body.error || 'failed');
+      if (response.status === 429) error.retryAfter = Math.max(1, Number(response.headers.get('Retry-After')) || 60);
+      throw error;
+    }
     return body;
   }
   function demoUsers() {

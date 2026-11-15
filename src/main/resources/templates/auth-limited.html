@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Подождите перед повторной попыткой · StudHub</title>
+<link rel="stylesheet" th:href="${base + '/css/vendor/bootstrap.min.css'}">
+<link rel="stylesheet" th:href="${base + '/css/fonts.css'}">
+<link rel="stylesheet" th:href="${base + '/css/style.css'}">
+<link rel="stylesheet" th:href="${base + '/css/auth.css'}">
+<script th:src="${base + '/js/auth-theme.js'}"></script></head>
+<body class="auth-page auth-refined"><main class="auth-layout" id="main-content"><section class="auth-content"><div class="auth-card">
+<div class="auth-wordmark">StudHub</div><h1>Слишком много попыток</h1>
+<p role="alert">Вход или регистрация временно ограничены. Повторите попытку через <strong th:text="${seconds}">300</strong> сек.</p>
+<p class="muted-copy">Повторные нажатия не ускорят ожидание. Введённые пароль и код не сохранены в этой форме.</p>
+<a class="btn btn-primary btn-auth" th:href="${base + '/login'}">Вернуться ко входу</a>
+<p class="auth-switch"><a th:href="${base + '/register'}">Вернуться к регистрации</a></p>
+</div></section></main></body></html>

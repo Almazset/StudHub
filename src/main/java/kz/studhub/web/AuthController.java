@@ -26,12 +26,15 @@ public class AuthController {
         if (form.getPassword() != null && !form.getPassword().equals(form.getConfirmPassword())) {
             result.rejectValue("password", "auth.passwordMismatch");
         }
+        if (form.getPassword() != null && form.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            result.rejectValue("password", "auth.passwordTooLong");
+        }
         if (result.hasErrors()) return "register";
         try {
             registration.register(form.getFullName(), form.getEmail(), form.getPassword());
             return "redirect:/login?registered";
-        } catch (IllegalArgumentException ex) {
-            model.addAttribute("registrationError", ex.getMessage());
+        } catch (IllegalArgumentException | org.springframework.dao.DataIntegrityViolationException ex) {
+            model.addAttribute("registrationError", "Не удалось создать аккаунт с этими данными. Проверьте их или перейдите ко входу.");
             return "register";
         }
     }
@@ -40,7 +43,7 @@ public class AuthController {
         @NotBlank @Size(min=2,max=80) private String fullName;
         @NotBlank @Email @Size(max=120) private String email;
         @NotBlank @Size(min=8,max=100) private String password;
-        private String confirmPassword;
+        @NotBlank @Size(max=100) private String confirmPassword;
         public String getFullName(){return fullName;} public void setFullName(String v){fullName=v;}
         public String getEmail(){return email;} public void setEmail(String v){email=v;}
         public String getPassword(){return password;} public void setPassword(String v){password=v;}

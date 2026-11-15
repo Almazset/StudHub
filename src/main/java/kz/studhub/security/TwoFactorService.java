@@ -43,6 +43,11 @@ public class TwoFactorService {
         return valid;
     }
 
+    public long lockSeconds(String email) {
+        return users.findByEmailIgnoreCase(email).map(user -> user.getOtpLockedUntil() == null ? 0L
+                : Math.max(0L, (user.getOtpLockedUntil().toEpochMilli() - System.currentTimeMillis() + 999) / 1000)).orElse(0L);
+    }
+
     @Transactional
     public List<String> enable(String email, String secret, long verifiedStep) {
         UserAccount user = users.findLockedByEmail(email).orElseThrow();
