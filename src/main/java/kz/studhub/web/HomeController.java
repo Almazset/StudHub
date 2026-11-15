@@ -23,8 +23,10 @@ public class HomeController {
     private final AssignmentService assignments;
     private final UserAccountRepository users;
     private final MessageSource messages;
+    private final kz.studhub.project.ProjectRepository projects;
     private final kz.studhub.news.NewsRepository news;
-    public HomeController(CourseService courses, AssignmentService assignments, UserAccountRepository users, MessageSource messages, kz.studhub.news.NewsRepository news) {
+    public HomeController(CourseService courses, AssignmentService assignments, UserAccountRepository users, MessageSource messages, kz.studhub.news.NewsRepository news, kz.studhub.project.ProjectRepository projects) {
+        this.projects = projects;
         this.news = news;
         this.courses = courses; this.assignments = assignments; this.users = users; this.messages = messages;
     }
@@ -33,11 +35,18 @@ public class HomeController {
         model.addAttribute("latestNews", news.findTop3ByOrderByPublishedAtDescIdDesc());
         var allAssignments = assignments.findAll();
         var allCourses = courses.findAll();
-        var currentAccount = users.findByEmailIgnoreCase(authentication.getName()).orElse(null);
+        var currentAccount = users.findByEmailIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Аккаунт не найден"));
+        var visibleProjects = projects.visible(currentAccount.getId());
+        model.addAttribute("projectCount", visibleProjects.size());
+        model.addAttribute("visibleProjects", visibleProjects.stream().limit(6)
+                .map(p -> new ProjectLink(p.getId(), p.getTitle())).toList());
+        // Courses currently form a public catalog; there is no private/enrollment model.
+        model.addAttribute("availableCourses", allCourses.stream().limit(6).toList());
         String greetingKey = LocalTime.now().isBefore(LocalTime.NOON) ? "dashboard.morning"
                 : (LocalTime.now().isBefore(LocalTime.of(18, 0)) ? "dashboard.day" : "dashboard.evening");
         model.addAttribute("greeting", messages.getMessage(greetingKey,
-                new Object[]{currentAccount == null ? authentication.getName() : currentAccount.getFullName()}, LocaleContextHolder.getLocale()));
+                new Object[]{currentAccount.getFullName()}, LocaleContextHolder.getLocale()));
         model.addAttribute("courseCount", allCourses.size());
         model.addAttribute("assignmentCount", allAssignments.size());
         long completed = allAssignments.stream().filter(a -> a.isCompleted()).count();
@@ -45,7 +54,6 @@ public class HomeController {
         model.addAttribute("completedCount", completed);
         model.addAttribute("pendingCount", pending);
         model.addAttribute("completionPercent", allAssignments.isEmpty() ? 0 : Math.round(completed * 100.0 / allAssignments.size()));
-        model.addAttribute("userCount", users.count());
         model.addAttribute("upcomingAssignments", allAssignments.stream()
                 .filter(assignment -> !assignment.isCompleted())
                 .sorted((left, right) -> left.getDueDate().compareTo(right.getDueDate()))
@@ -64,6 +72,8 @@ public class HomeController {
         return "index";
     }
     @GetMapping("/access-denied") public String denied() { return "access-denied"; }
+
+    public record ProjectLink(Long id, String title) {}
 
     public static class WeekSlot {
         private final LocalDate date;
