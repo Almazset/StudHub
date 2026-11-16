@@ -14,6 +14,14 @@ public class Project {
     @ElementCollection(fetch=FetchType.LAZY)
     @CollectionTable(name="study_project_members", joinColumns=@JoinColumn(name="project_id"), uniqueConstraints=@UniqueConstraint(columnNames={"project_id","user_id"}))
     @Column(name="user_id", nullable=false) Set<Long> memberIds = new HashSet<>();
+    @Column Boolean closed = false;
+    @ElementCollection(fetch=FetchType.LAZY)
+    @CollectionTable(name="study_project_invitations", joinColumns=@JoinColumn(name="project_id"), uniqueConstraints=@UniqueConstraint(columnNames={"project_id","user_id"}))
+    @Column(name="user_id", nullable=false) Set<Long> invitedIds = new HashSet<>();
+    boolean isClosed() { return Boolean.TRUE.equals(closed); }
+    void requireOpen() {
+        if (isClosed()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,"Проект закрыт. Владелец может открыть его повторно.");
+    }
     public Long getId() { return id; }
     public String getTitle() { return title; }
     protected Project() {}

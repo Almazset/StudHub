@@ -89,6 +89,7 @@ class ChatIntegrationTest {
         String base="/api/projects/"+id;
         mvc.perform(post(base+"/members").with(user(alice.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON)
             .content(json.writeValueAsString(Map.of("userId",bob.getId())))).andExpect(status().isOk());
+        mvc.perform(post(base+"/invitation/accept").with(user(bob.getEmail())).with(csrf())).andExpect(status().isOk());
         var opened=mvc.perform(post(base+"/chat").with(user(bob.getEmail())).with(csrf())).andExpect(status().isOk()).andReturn();
         String room=json.readTree(opened.getResponse().getContentAsString()).get("id").asText();
         String details=json.writeValueAsString(Map.of("title","Updated team","description","Plan"));
@@ -135,6 +136,7 @@ class ChatIntegrationTest {
         mvc.perform(post("/api/projects/"+id+"/members").with(user(alice.getEmail())).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("userId",bob.getId()))))
             .andExpect(status().isOk());
+        mvc.perform(post("/api/projects/"+id+"/invitation/accept").with(user(bob.getEmail())).with(csrf())).andExpect(status().isOk());
         // Adding a teammate updates an existing room without requiring them to open the project first.
         assertThat(chat.detail(bob.getEmail(),room).members()).hasSize(2);
         bob.setProfileVisibility("private"); users.saveAndFlush(bob);
@@ -161,7 +163,8 @@ class ChatIntegrationTest {
         String member=json.writeValueAsString(Map.of("userId",bob.getId()));
         mvc.perform(post("/api/projects/"+id+"/members").with(user(eve.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(member)).andExpect(status().isNotFound());
         mvc.perform(post("/api/projects/"+id+"/members").with(user(alice.getEmail())).contentType(MediaType.APPLICATION_JSON).content(member)).andExpect(status().isForbidden());
-        mvc.perform(post("/api/projects/"+id+"/members").with(user(alice.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(member)).andExpect(status().isOk()).andExpect(jsonPath("$.members.length()").value(2));
+        mvc.perform(post("/api/projects/"+id+"/members").with(user(alice.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(member)).andExpect(status().isOk()).andExpect(jsonPath("$.members.length()").value(1));
+        mvc.perform(post("/api/projects/"+id+"/invitation/accept").with(user(bob.getEmail())).with(csrf())).andExpect(status().isOk()).andExpect(jsonPath("$.members.length()").value(2));
         mvc.perform(get("/api/projects").with(user(bob.getEmail()))).andExpect(jsonPath("$[0].title").value("Учебный проект"));
         mvc.perform(get("/api/projects").with(user(eve.getEmail()))).andExpect(jsonPath("$.length()").value(0));
         mvc.perform(get("/api/projects/"+id).with(user(alice.getEmail()))).andExpect(status().isOk()).andExpect(jsonPath("$.title").value("Учебный проект"));
