@@ -82,3 +82,5 @@
 @media(max-width:500px){[data-page="assignments"] .toolbar-controls{grid-template-columns:1fr}[data-page="assignments"] .filter-pill{min-height:40px}}
 
 .project-history{padding-left:22px}.project-history li{padding:10px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}.project-invitation{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:16px 0;border-bottom:1px solid var(--border)}.project-task-filters input[type=date]{padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink)}
+
+.lesson-row{display:flex;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border)}.lesson-row button:first-child{flex:1;text-align:left;overflow-wrap:anywhere}.lesson-editor{display:grid;gap:14px;margin-top:18px}.lesson-editor label{display:grid;gap:6px}.lesson-editor input,.lesson-editor textarea{width:100%;padding:12px;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:10px}[data-lesson-reader]{margin-top:24px;padding-top:20px;border-top:1px solid var(--border);scroll-margin-top:100px}

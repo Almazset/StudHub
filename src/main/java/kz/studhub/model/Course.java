@@ -30,6 +30,16 @@ public class Course {
     public String getExternalUrl() { return externalUrl; }
     public void setExternalUrl(String value) { externalUrl = value == null ? null : value.trim(); }
 
+    @Size(max=2000) @Column(length=2000) private String startInstructions;
+    @Size(max=80) @Column(length=80) private String language;
+    @Size(max=1000) @Column(length=1000) private String accessInfo;
+    public String getStartInstructions(){return startInstructions;}
+    public void setStartInstructions(String value){startInstructions=value;}
+    public String getLanguage(){return language;}
+    public void setLanguage(String value){language=value;}
+    public String getAccessInfo(){return accessInfo;}
+    public void setAccessInfo(String value){accessInfo=value;}
+    public boolean isExternal(){return externalUrl!=null&&!externalUrl.isBlank();}
     public Course() {}
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

@@ -23,7 +23,7 @@ public class CoursePageController {
 
     @InitBinder("course")
     public void bindCourse(org.springframework.web.bind.WebDataBinder binder) {
-        binder.setAllowedFields("title", "description", "teacherName", "externalUrl");
+        binder.setAllowedFields("title", "description", "teacherName", "externalUrl", "startInstructions", "language", "accessInfo");
     }
     @GetMapping public String list(Model model) { model.addAttribute("courses", service.findAll()); return "courses"; }
     @GetMapping("/{id}") public String detail(@PathVariable Long id, Model model) {
