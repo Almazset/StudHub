@@ -51,7 +51,10 @@
     if (!event.target.closest('.topbar-tool')) closePanels();
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closePanels(true);
+    if (event.key === 'Escape' && panelTriggers.some((trigger) => trigger.getAttribute('aria-expanded') === 'true')) {
+      event.preventDefault();
+      closePanels(true);
+    }
   });
 
   const sidebar = document.querySelector('.sidebar');

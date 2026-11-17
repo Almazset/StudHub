@@ -180,8 +180,6 @@ body .auth-card { box-shadow:0 24px 80px #1018281a; }
   body .sidebar-brand-row { height:100px; padding:0 20px; }
   body .app-main { min-height:calc(100vh - 56px); border-radius:0 24px 24px 0; box-shadow:16px 20px 70px #14223b1c; }
   body .topbar { border-radius:0 24px 0 0; top:0; height:84px; }
-  body .topbar-actions [data-panel-trigger="search"] { width:220px; border-radius:24px; justify-content:start; padding:0 16px; gap:12px; display:flex; background:var(--surface); border:1px solid var(--border); }
-  body .topbar-actions [data-panel-trigger="search"]::after { content:attr(aria-label); color:var(--muted); font-size:12px; }
 }
 @media (max-width:1199.98px) { body .dashboard-summary { grid-template-columns:1fr; } body .stat-card { padding:16px; gap:8px; } }
 @media (max-width:900px) { body .dashboard-workspace { grid-template-columns:1fr; } body .dashboard-summary { grid-template-columns:1fr; } }
@@ -366,4 +364,18 @@ body .study-assistant .assistant-launcher:focus-visible span { opacity:1; transf
  body .study-assistant .assistant-launcher { transition:width var(--motion-launcher) var(--motion-ease); }
  body .study-assistant .assistant-launcher span { transition:opacity var(--motion-panel) ease,transform var(--motion-launcher) var(--motion-ease); }
  body .study-assistant .assistant-launcher:focus-visible, body .study-assistant .assistant-launcher:focus-visible span { transition:none; }
+}
+
+/* Search starts as an icon; reveal its field from the trigger without moving the header. */
+body .topbar-actions [data-panel-trigger="search"] { width:42px; height:42px; flex:none; }
+body .search-popover {
+  transform:none; clip-path:inset(-24px -24px -48px -24px round 18px);
+  transition:opacity var(--motion-panel) var(--motion-ease),clip-path var(--motion-panel) var(--motion-ease),display var(--motion-panel) allow-discrete;
+}
+body .search-popover[hidden] { transform:none; clip-path:inset(0 0 85% 85% round 18px); pointer-events:none; }
+@starting-style { body .search-popover:not([hidden]) { opacity:0; transform:none; clip-path:inset(0 0 85% 85% round 18px); } }
+@media(prefers-reduced-motion:reduce) {
+  body .search-popover,body .search-popover[hidden] { clip-path:none; transform:none; }
+  body .search-popover { transition:opacity 120ms ease,display 120ms allow-discrete; }
+  @starting-style { body .search-popover:not([hidden]) { clip-path:none; transform:none; } }
 }
