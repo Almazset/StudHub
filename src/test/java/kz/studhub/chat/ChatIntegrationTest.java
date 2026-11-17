@@ -269,4 +269,23 @@ class ChatIntegrationTest {
             assertThat(chat.history(bob.getEmail(),room,null,null).messages()).hasSize(1);
         }
     }
+
+    @Test void messageActionsValidateCsrfMembershipAndInput() throws Exception {
+        var room=chat.direct(alice.getEmail(),bob.getId());
+        var message=chat.send(alice.getEmail(),room.id(),"Original",UUID.randomUUID());
+        String base="/api/chat/rooms/"+room.id(), path=base+"/messages/"+message.id();
+        for(String action:List.of("favorite","pin","reaction")) {
+            String payload=action.equals("reaction")?"{\"emoji\":\"👍\"}":"{\"enabled\":true}";
+            mvc.perform(put(path+"/"+action).with(user(bob.getEmail())).contentType(MediaType.APPLICATION_JSON).content(payload)).andExpect(status().isForbidden());
+            mvc.perform(put(path+"/"+action).with(user(eve.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(payload)).andExpect(status().isNotFound());
+            mvc.perform(put(path+"/"+action).with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(payload)).andExpect(status().isOk());
+        }
+        mvc.perform(put(path+"/reaction").with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"emoji\":\"bad\"}")).andExpect(status().isBadRequest());
+        mvc.perform(put(path+"/favorite").with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest());
+        mvc.perform(get(base+"/saved").param("kind","favorites").with(user(alice.getEmail()))).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get(base+"/saved").param("kind","favorites").with(user(eve.getEmail()))).andExpect(status().isNotFound());
+        mvc.perform(get(base+"/around/"+message.id()).with(user(eve.getEmail()))).andExpect(status().isNotFound());
+        mvc.perform(post(base+"/refresh").with(user(eve.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("ids",List.of(message.id()))))).andExpect(status().isNotFound());
+        mvc.perform(post(base+"/messages").with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("text","Reply","clientId",UUID.randomUUID(),"replyToId",message.id())))).andExpect(status().isOk()).andExpect(jsonPath("$.reply.text").value("Original"));
+    }
 }

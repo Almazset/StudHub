@@ -106,4 +106,59 @@ class ChatServiceTest {
             .isInstanceOfSatisfying(ChatService.Failure.class,e -> assertThat(e.status).isEqualTo(HttpStatus.TOO_MANY_REQUESTS));
         assertThat(chat.send(bob.getEmail(),"global","Different account",UUID.randomUUID()).id()).isNotNull();
     }
+
+    @Test void repliesFollowEditsAndShowDeletedOriginalWithoutLeakingOtherRooms() {
+        String room=chat.direct(alice.getEmail(),bob.getId()).id();
+        var original=chat.send(alice.getEmail(),room,"First",UUID.randomUUID());
+        denied(()->chat.send(bob.getEmail(),"global","Leak",UUID.randomUUID(),original.id()));
+        var reply=chat.send(bob.getEmail(),room,"Answer",UUID.randomUUID(),original.id());
+        assertThat(reply.reply().text()).isEqualTo("First");
+        chat.editMessage(alice.getEmail(),room,original.id(),"Revised");
+        assertThat(chat.refresh(bob.getEmail(),room,Set.of(reply.id())).getFirst().reply().text()).isEqualTo("Revised");
+        chat.deleteMessage(alice.getEmail(),room,original.id());
+        assertThat(chat.refresh(bob.getEmail(),room,Set.of(reply.id())).getFirst().reply().text()).isNull();
+    }
+    @Test void reactionsAreIdempotentFavoritesPrivateAndPinsRequireAuthority() {
+        String room=chat.group(alice.getEmail(),"Study",Set.of(bob.getId())).id();
+        var message=chat.send(alice.getEmail(),room,"Notes",UUID.randomUUID());
+        chat.reaction(bob.getEmail(),room,message.id(),"👍");
+        assertThat(chat.reaction(bob.getEmail(),room,message.id(),"👍").reactions().getFirst().count()).isEqualTo(1);
+        assertThat(chat.reaction(alice.getEmail(),room,message.id(),"👍").reactions().getFirst().count()).isEqualTo(2);
+        chat.reaction(bob.getEmail(),room,message.id(),"");
+        assertThat(chat.refresh(bob.getEmail(),room,Set.of(message.id())).getFirst().reactions().getFirst().mine()).isFalse();
+        chat.favorite(bob.getEmail(),room,message.id(),true);
+        assertThat(chat.saved(bob.getEmail(),room,"favorites")).hasSize(1);
+        assertThat(chat.saved(alice.getEmail(),room,"favorites")).isEmpty();
+        denied(()->chat.favorite(stranger.getEmail(),room,message.id(),true));
+        assertThatThrownBy(()->chat.pin(bob.getEmail(),room,message.id(),true)).isInstanceOf(ChatService.Failure.class);
+        assertThat(chat.pin(alice.getEmail(),room,message.id(),true).pinned()).isTrue();
+        assertThat(chat.saved(bob.getEmail(),room,"pins")).hasSize(1);
+        chat.leave(bob.getEmail(),room);
+        denied(()->chat.saved(bob.getEmail(),room,"favorites"));
+        chat.deleteMessage(alice.getEmail(),room,message.id());messages.flush();
+        assertThat(chat.saved(alice.getEmail(),room,"pins")).isEmpty();
+    }
+    @Test void forwardChecksBothRoomsAndPersistsIndependentCopyWithRetryProtection() {
+        String room=chat.direct(alice.getEmail(),bob.getId()).id();
+        var message=chat.send(alice.getEmail(),room,"Shared text",UUID.randomUUID());
+        denied(()->chat.forward(stranger.getEmail(),room,message.id(),"global",UUID.randomUUID()));
+        String privateRoom=chat.direct(bob.getEmail(),stranger.getId()).id();
+        denied(()->chat.forward(alice.getEmail(),room,message.id(),privateRoom,UUID.randomUUID()));
+        UUID retry=UUID.randomUUID();var forwarded=chat.forward(bob.getEmail(),room,message.id(),"global",retry);
+        assertThat(forwarded.forwarded()).isTrue();assertThat(forwarded.reply()).isNull();
+        assertThat(chat.forward(bob.getEmail(),room,message.id(),"global",retry).id()).isEqualTo(forwarded.id());
+        chat.deleteMessage(alice.getEmail(),room,message.id());
+        assertThat(chat.history(stranger.getEmail(),"global",null,null).messages().getFirst().text()).isEqualTo("Shared text");
+    }
+    @Test void refreshCoversOldEditsAndDeletionAndAroundDoesNotMarkRead() {
+        for(int i=0;i<75;i++)messages.save(new ChatMessage("global",alice.getId(),"Needle "+i,UUID.randomUUID().toString()));
+        messages.flush();var old=chat.history(bob.getEmail(),"global",null,0L).messages().getFirst();
+        chat.editMessage(alice.getEmail(),"global",old.id(),"Old revised");
+        assertThat(chat.refresh(bob.getEmail(),"global",Set.of(old.id())).getFirst().text()).isEqualTo("Old revised");
+        assertThat(chat.around(bob.getEmail(),"global",old.id()).messages()).extracting(ChatService.Message::id).contains(old.id());
+        assertThat(chat.detail(bob.getEmail(),"global").room().unread()).isEqualTo(75);
+        chat.deleteMessage(alice.getEmail(),"global",old.id());
+        assertThat(chat.refresh(bob.getEmail(),"global",Set.of(old.id()))).isEmpty();
+        assertThat(chat.detail(bob.getEmail(),"global").room().unread()).isEqualTo(74);
+    }
 }

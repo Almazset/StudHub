@@ -1,0 +1,13 @@
+BEGIN;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS reply_to_id BIGINT;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS forwarded BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS chat_reactions (
+ message_id BIGINT NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+ user_id BIGINT NOT NULL, emoji VARCHAR(16) NOT NULL, PRIMARY KEY(message_id,user_id)
+);
+CREATE TABLE IF NOT EXISTS chat_favorites (
+ message_id BIGINT NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+ user_id BIGINT NOT NULL, PRIMARY KEY(message_id,user_id)
+);
+COMMIT;
