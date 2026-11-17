@@ -15,11 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ChatService {
     public record Person(Long id, String name) {}
-    public record Message(Long id, Person sender, String text, Instant createdAt, String clientId, Instant editedAt) {}
+    public record Quote(Long id, Person sender, String text) {}
+    public record Reaction(String emoji, long count, boolean mine) {}
+    public record Message(Long id, Person sender, String text, Instant createdAt, String clientId, Instant editedAt,
+                          Quote reply, boolean forwarded, boolean pinned, boolean favorite, List<Reaction> reactions) {}
     public record Room(String id, String kind, String name, Long peerId, Long ownerId, int memberCount,
                        long unread, Message lastMessage, Instant updatedAt) {}
     public record RoomList(Long meId, List<Room> rooms) {}
-    public record Detail(Room room, List<Person> members) {}
+    public record Detail(Room room, List<Person> members, boolean canPin) {}
     public record History(List<Message> messages, boolean hasMore) {}
     public static class Failure extends RuntimeException {
         final HttpStatus status; final String code;
@@ -49,8 +52,20 @@ public class ChatService {
         return ids.isEmpty() ? Map.of() : users.findChatIdentities(new HashSet<>(ids)).stream().collect(Collectors.toMap(ChatIdentity::getId,u -> u));
     }
     private List<Message> views(List<ChatMessage> rows, Long viewer) {
-        var accounts = accounts(rows.stream().map(m -> m.senderId).toList());
-        return rows.stream().map(m -> new Message(m.id,person(m.senderId,accounts,viewer),m.text,m.createdAt,m.clientId,m.editedAt)).toList();
+        var originals = messages.findAllById(rows.stream().map(m -> m.replyToId).filter(Objects::nonNull).toList())
+            .stream().collect(Collectors.toMap(m -> m.id,m -> m));
+        var ids = new HashSet<Long>(); rows.forEach(m -> ids.add(m.senderId)); originals.values().forEach(m -> ids.add(m.senderId));
+        var accounts = accounts(ids);
+        return rows.stream().map(m -> {
+            var original = originals.get(m.replyToId);
+            Quote quote = m.replyToId == null ? null : original != null && original.roomId.equals(m.roomId)
+                ? new Quote(original.id,person(original.senderId,accounts,viewer),original.text)
+                : new Quote(m.replyToId,null,null);
+            var counts = m.reactions.values().stream().collect(Collectors.groupingBy(e -> e,TreeMap::new,Collectors.counting()));
+            var reactions = counts.entrySet().stream().map(e -> new Reaction(e.getKey(),e.getValue(),e.getKey().equals(m.reactions.get(viewer)))).toList();
+            return new Message(m.id,person(m.senderId,accounts,viewer),m.text,m.createdAt,m.clientId,m.editedAt,
+                quote,m.forwarded,m.pinned,m.favorites.contains(viewer),reactions);
+        }).toList();
     }
     private Room view(ChatRoom room, Long viewer) {
         var participants = members.findByRoomIdOrderByUserId(room.id);
@@ -79,7 +94,8 @@ public class ChatService {
             String name = peerId == null ? room.name : person(peerId,accounts,viewer).name();
             ChatMessage last = latest.get(room.id);
             return new Room(room.id,room.kind,name,peerId,room.ownerId,room.kind.equals("GLOBAL") ? 0 : participants.size(),unread.getOrDefault(room.id,0L),
-                last == null ? null : new Message(last.id,person(last.senderId,accounts,viewer),last.text,last.createdAt,last.clientId,last.editedAt),room.updatedAt);
+                last == null ? null : new Message(last.id,person(last.senderId,accounts,viewer),last.text,last.createdAt,last.clientId,last.editedAt,
+                    null,last.forwarded,last.pinned,false,List.of()),room.updatedAt);
         }).toList());
     }
     @Transactional(readOnly = true)
@@ -105,7 +121,8 @@ public class ChatService {
         Long viewer = me(email).getId(); var room = accessible(id,viewer,false);
         var ids = room.kind.equals("GLOBAL") ? List.<Long>of() : members.findByRoomIdOrderByUserId(id).stream().map(m -> m.userId).toList();
         var accounts = accounts(ids);
-        return new Detail(view(room,viewer),ids.stream().map(uid -> person(uid,accounts,viewer)).toList());
+        return new Detail(view(room,viewer),ids.stream().map(uid -> person(uid,accounts,viewer)).toList(),
+            room.kind.equals("DIRECT") || viewer.equals(room.ownerId) || me(email).getRole()==kz.studhub.model.Role.ADMIN);
     }
     private void capacity(Long id) {
         if (members.countByUserId(id) >= 100) throw fail(HttpStatus.CONFLICT,"ROOM_LIMIT");
@@ -173,13 +190,18 @@ public class ChatService {
         return new History(views(rows,viewer),more);
     }
     public Message send(String email, String id, String text, UUID clientId) {
+        return send(email,id,text,clientId,null);
+    }
+    public Message send(String email, String id, String text, UUID clientId, Long replyToId) {
         Long viewer = lockedMe(email).getId(); var room = accessible(id,viewer,true);
         var previous = messages.findByRoomIdAndSenderIdAndClientId(id,viewer,clientId.toString());
         if (previous.isPresent()) return views(List.of(previous.get()),viewer).getFirst();
         String body = text.strip();
         if (body.isEmpty() || body.length() > 4000 || body.indexOf('\0') >= 0) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
         if (messages.countBySenderIdAndCreatedAtAfter(viewer,Instant.now().minusSeconds(60)) >= 30) throw fail(HttpStatus.TOO_MANY_REQUESTS,"RATE_LIMIT");
-        var message = messages.saveAndFlush(new ChatMessage(id,viewer,body,clientId.toString()));
+        if (replyToId != null) messageInRoom(id,replyToId);
+        var entity = new ChatMessage(id,viewer,body,clientId.toString()); entity.replyToId=replyToId;
+        var message = messages.saveAndFlush(entity);
         room.updatedAt = message.createdAt;
         return views(List.of(message),viewer).getFirst();
     }
@@ -201,6 +223,56 @@ public class ChatService {
         Long viewer=me(email).getId();accessible(id,viewer,false);
         String term=query.strip();if(term.length()<2 || term.length()>120) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
         return views(messages.findByRoomIdAndTextContainingIgnoreCaseOrderByIdDesc(id,term,PageRequest.of(0,50)),viewer);
+    }
+    private ChatMessage messageInRoom(String room, Long id) {
+        return messages.findById(id).filter(m -> m.roomId.equals(room)).orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
+    }
+    public Message reaction(String email,String room,Long id,String emoji) {
+        Long viewer=me(email).getId(); accessible(room,viewer,true);
+        if (!Set.of("", "👍", "❤️", "😂", "🎉", "🤔", "👀").contains(emoji)) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
+        var message=messageInRoom(room,id);
+        if(emoji.isEmpty()) message.reactions.remove(viewer); else message.reactions.put(viewer,emoji);
+        return views(List.of(message),viewer).getFirst();
+    }
+    public Message favorite(String email,String room,Long id,boolean enabled) {
+        Long viewer=me(email).getId(); accessible(room,viewer,true);var message=messageInRoom(room,id);
+        if(enabled) message.favorites.add(viewer);else message.favorites.remove(viewer);
+        return views(List.of(message),viewer).getFirst();
+    }
+    public Message pin(String email,String roomId,Long id,boolean enabled) {
+        var user=me(email);var room=accessible(roomId,user.getId(),true);
+        if(!room.kind.equals("DIRECT") && !user.getId().equals(room.ownerId) && user.getRole()!=kz.studhub.model.Role.ADMIN)
+            throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
+        var message=messageInRoom(roomId,id);message.pinned=enabled;
+        return views(List.of(message),user.getId()).getFirst();
+    }
+    public Message forward(String email,String sourceRoom,Long id,String target,UUID clientId) {
+        // Lock user first, like send(), so retries cannot create duplicate forwarded messages.
+        Long viewer=lockedMe(email).getId();accessible(sourceRoom,viewer,false);accessible(target,viewer,false);
+        var source=messageInRoom(sourceRoom,id);
+        var sent=send(email,target,source.text,clientId);
+        var message=messageInRoom(target,sent.id());message.forwarded=true;
+        return views(List.of(message),viewer).getFirst();
+    }
+    @Transactional(readOnly=true)
+    public List<Message> saved(String email,String room,String kind) {
+        Long viewer=me(email).getId();accessible(room,viewer,false);
+        if(!Set.of("favorites","pins").contains(kind))throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
+        return views(kind.equals("pins") ? messages.findByRoomIdAndPinnedTrueOrderByIdDesc(room,PageRequest.of(0,100))
+            : messages.favorites(room,viewer,PageRequest.of(0,100)),viewer);
+    }
+    @Transactional(readOnly=true)
+    public List<Message> refresh(String email,String room,Set<Long> ids) {
+        Long viewer=me(email).getId();accessible(room,viewer,false);
+        return views(messages.findByRoomIdAndIdInOrderByIdAsc(room,ids),viewer);
+    }
+    @Transactional(readOnly=true)
+    public History around(String email,String room,Long id) {
+        Long viewer=me(email).getId();accessible(room,viewer,false);messageInRoom(room,id);
+        var rows=new ArrayList<>(messages.findByRoomIdAndIdLessThanOrderByIdDesc(room,id,PageRequest.of(0,25)));
+        Collections.reverse(rows);rows.add(messageInRoom(room,id));
+        rows.addAll(messages.findByRoomIdAndIdGreaterThanOrderByIdAsc(room,id,PageRequest.of(0,25)));
+        return new History(views(rows,viewer),messages.existsByRoomIdAndIdLessThan(room,rows.getFirst().id));
     }
     public void read(String email, String id, long messageId) {
         Long viewer = lockedMe(email).getId(); accessible(id,viewer,true);

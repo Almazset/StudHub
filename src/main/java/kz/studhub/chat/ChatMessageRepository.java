@@ -11,6 +11,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     List<ChatMessage> findByRoomIdAndIdLessThanOrderByIdDesc(String roomId, long before, Pageable page);
     List<ChatMessage> findByRoomIdAndIdGreaterThanOrderByIdAsc(String roomId, long after, Pageable page);
     List<ChatMessage> findByRoomIdAndTextContainingIgnoreCaseOrderByIdDesc(String roomId,String text,Pageable page);
+    List<ChatMessage> findByRoomIdAndIdInOrderByIdAsc(String roomId,Collection<Long> ids);
+    List<ChatMessage> findByRoomIdAndPinnedTrueOrderByIdDesc(String roomId,Pageable page);
+    boolean existsByRoomIdAndIdLessThan(String roomId,Long id);
+    @Query("select m from ChatMessage m join m.favorites f where m.roomId=:room and f=:viewer order by m.id desc")
+    List<ChatMessage> favorites(@Param("room") String room,@Param("viewer") Long viewer,Pageable page);
     Optional<ChatMessage> findFirstByRoomIdOrderByIdDesc(String roomId);
     Optional<ChatMessage> findByRoomIdAndSenderIdAndClientId(String roomId, Long senderId, String clientId);
     long countByRoomIdAndIdGreaterThanAndSenderIdNot(String roomId, long after, Long viewer);
