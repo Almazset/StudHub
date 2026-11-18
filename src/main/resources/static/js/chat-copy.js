@@ -34,6 +34,19 @@
     MEMBER_LIMIT:['В группе может быть до 30 участников.','A group can have up to 30 members.','Топта 30 қатысушыға дейін болуы мүмкін.'],
     RATE_LIMIT:['Слишком много сообщений. Подождите минуту.','Too many messages. Please wait a minute.','Хабарламалар тым көп. Бір минут күтіңіз.'],
     VALIDATION:['Проверьте заполненные поля. Сообщение — до 4000 символов.','Check the fields. Messages can contain up to 4000 characters.','Өрістерді тексеріңіз. Хабарлама 4000 таңбаға дейін.'],
+    fileAttach:['Прикрепить файл','Attach a file','Файл тіркеу'],
+    fileRemove:['Убрать вложение','Remove attachment','Тіркемені алып тастау'],
+    fileDownload:['Скачать','Download','Жүктеп алу'],
+    fileUploading:['Загрузка','Uploading','Жүктелуде'],
+    fileChecking:['Проверяем файл…','Checking the file…','Файл тексерілуде…'],
+    kilobytes:['КБ','KB','КБ'],
+    megabytes:['МБ','MB','МБ'],
+    FILE_TYPE:['Разрешены PNG, JPEG, PDF, DOCX и ZIP. В ZIP могут быть только PNG, JPEG, PDF и DOCX.','Use PNG, JPEG, PDF, DOCX or ZIP. ZIP may contain only PNG, JPEG, PDF and DOCX files.','PNG, JPEG, PDF, DOCX және ZIP пішімдері жарайды. ZIP ішінде тек PNG, JPEG, PDF және DOCX болуы керек.'],
+    FILE_LIMIT:['Файл пустой или превышает лимит. Максимум 8 МБ на файл. Для документов и архивов также действуют ограничения на содержимое.','The file is empty or exceeds a limit. Maximum 8 MB per file. Documents and archives also have content limits.','Файл бос немесе шектен асады. Бір файлға ең көбі 8 МБ. Құжаттар мен мұрағаттардың мазмұнына да шектеулер бар.'],
+    FILE_NAME:['Переименуйте файл. Используйте буквы, цифры, пробелы, дефисы и подчёркивания.','Rename the file. Use letters, numbers, spaces, hyphens and underscores.','Файл атауын өзгертіңіз. Әріптерді, сандарды, бос орындарды, дефис пен астын сызуды қолданыңыз.'],
+    FILE_CONTENT:['Файл повреждён, не соответствует формату или содержит неподдерживаемые элементы. Проверьте файл и попробуйте другой.','The file is damaged, does not match its format, or contains unsupported elements. Check it or try another file.','Файл бүлінген, пішіміне сәйкес келмейді немесе қолдау көрсетілмейтін элементтер бар. Басқа файлды қолданып көріңіз.'],
+    FILE_QUOTA:['Занято 64 МБ для вложений. Удалите свои старые сообщения с файлами, чтобы освободить место.','Your attachment storage limit is 64 MB. Delete your older messages with files to free space.','Тіркемелерге 64 МБ шектеу бар. Орын босату үшін файлдары бар ескі хабарламаларыңызды өшіріңіз.'],
+    FILE_BUSY:['Сервер сейчас проверяет другие файлы. Повторите отправку чуть позже.','The server is checking other files. Retry in a moment.','Сервер басқа файлдарды тексеріп жатыр. Сәл кейінірек қайталаңыз.'],
     STORAGE:['Не удалось сохранить демонстрацию в браузере.','Could not save the preview in this browser.','Алдын ала қарауды браузерде сақтау мүмкін болмады.']
   };
   window.StudHubChatCopy = key => copy[key]?.[['ru','en','kk'].indexOf(window.StudHubI18n?.language || 'ru')] || copy[key]?.[0] || key;

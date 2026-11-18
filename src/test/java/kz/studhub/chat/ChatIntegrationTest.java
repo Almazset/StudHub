@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
@@ -287,5 +288,47 @@ class ChatIntegrationTest {
         mvc.perform(get(base+"/around/"+message.id()).with(user(eve.getEmail()))).andExpect(status().isNotFound());
         mvc.perform(post(base+"/refresh").with(user(eve.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("ids",List.of(message.id()))))).andExpect(status().isNotFound());
         mvc.perform(post(base+"/messages").with(user(bob.getEmail())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("text","Reply","clientId",UUID.randomUUID(),"replyToId",message.id())))).andExpect(status().isOk()).andExpect(jsonPath("$.reply.text").value("Original"));
+    }
+
+    @Test void attachmentsArePrivateTransactionalAndRetrySafe() throws Exception {
+        String room=chat.group(alice.getEmail(),"File test",Set.of(bob.getId())).id();
+        String path="/api/chat/rooms/"+room+"/messages";
+        UUID token=UUID.randomUUID();
+        var metadata=new MockMultipartFile("message","","application/json",
+            json.writeValueAsBytes(Map.of("text","","clientId",token)));
+        var file=new MockMultipartFile("file","Лекция.png","image/png",ChatFileValidatorTest.image("png"));
+        mvc.perform(multipart(path).file(metadata).file(file).with(user(alice.getEmail())))
+            .andExpect(status().isForbidden());
+        mvc.perform(multipart(path).file(metadata).file(file).with(user(eve.getEmail())).with(csrf()))
+            .andExpect(status().isNotFound());
+        var malformed=new MockMultipartFile("file","notes.png","image/png",new byte[]{1,2,3});
+        mvc.perform(multipart(path).file(metadata).file(malformed).with(user(alice.getEmail())).with(csrf()))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("FILE_CONTENT"));
+        assertThat(chat.history(alice.getEmail(),room,null,null).messages()).isEmpty();
+
+        var sent=mvc.perform(multipart(path).file(metadata).file(file).with(user(alice.getEmail())).with(csrf()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.attachment.name").value("Лекция.png"))
+            .andExpect(jsonPath("$.attachment.data").doesNotExist()).andReturn();
+        long id=json.readTree(sent.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8)).get("id").asLong();
+        mvc.perform(multipart(path).file(metadata).file(file).with(user(alice.getEmail())).with(csrf()))
+            .andExpect(jsonPath("$.id").value(id));
+        String download=path+"/"+id+"/attachment";
+        mvc.perform(get(download).with(user(bob.getEmail())))
+            .andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM))
+            .andExpect(header().string("X-Content-Type-Options","nosniff"))
+            .andExpect(header().string("Cache-Control","no-store"))
+            .andExpect(header().string("Content-Disposition",org.hamcrest.Matchers.startsWith("attachment;")));
+        mvc.perform(get(download).with(user(eve.getEmail()).roles("ADMIN"))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/chat/rooms/global/messages/"+id+"/attachment").with(user(alice.getEmail())))
+            .andExpect(status().isNotFound());
+
+        String destination=chat.direct(bob.getEmail(),eve.getId()).id();
+        var copy=chat.forward(bob.getEmail(),room,id,destination,UUID.randomUUID());
+        assertThat(copy.attachment().name()).isEqualTo("Лекция.png");
+        chat.leave(bob.getEmail(),room);
+        mvc.perform(get(download).with(user(bob.getEmail()))).andExpect(status().isNotFound());
+        mvc.perform(delete(path+"/"+id).with(user(alice.getEmail())).with(csrf())).andExpect(status().isOk());
+        mvc.perform(get(download).with(user(alice.getEmail()))).andExpect(status().isNotFound());
+        assertThat(chat.download(eve.getEmail(),destination,copy.id()).data()).isNotEmpty();
     }
 }

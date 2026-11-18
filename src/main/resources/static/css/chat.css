@@ -130,3 +130,17 @@
 [data-chat-dialog-body] > .chat-button { margin:4px; }
 
 .chat-message-menu[popover] { position:fixed;inset:auto;margin:0;width:210px;max-width:calc(100vw - 16px);max-height:min(320px,calc(100dvh - 16px));font-size:13px; }
+
+.chat-file-picker { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.chat-file-picker .chat-button { min-height:38px; padding:6px 10px; }
+.chat-file-picked { display:flex; align-items:center; gap:6px; min-width:0; max-width:100%; font-size:12px; }
+.chat-file-picked span { overflow-wrap:anywhere; }
+.chat-file-picked .chat-icon-button { width:34px; height:34px; font-size:13px; }
+.chat-upload { display:flex; align-items:center; gap:8px; margin-top:8px; color:var(--muted); font-size:12px; }
+.chat-upload progress { width:min(150px,45%); accent-color:var(--ink); }
+.chat-attachment { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:3px 8px;
+  margin-top:6px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface);
+  color:var(--ink); text-decoration:none; font-size:13px; overflow-wrap:anywhere; }
+.chat-attachment i { grid-row:span 2; }
+.chat-attachment small { grid-column:2; color:var(--muted); }
+.chat-attachment:hover strong { text-decoration:underline; }

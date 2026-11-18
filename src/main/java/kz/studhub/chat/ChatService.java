@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Transactional
@@ -17,8 +18,9 @@ public class ChatService {
     public record Person(Long id, String name) {}
     public record Quote(Long id, Person sender, String text) {}
     public record Reaction(String emoji, long count, boolean mine) {}
+    public record Attachment(String name, String mediaType, int size) {}
     public record Message(Long id, Person sender, String text, Instant createdAt, String clientId, Instant editedAt,
-                          Quote reply, boolean forwarded, boolean pinned, boolean favorite, List<Reaction> reactions) {}
+                          Quote reply, boolean forwarded, boolean pinned, boolean favorite, List<Reaction> reactions, Attachment attachment) {}
     public record Room(String id, String kind, String name, Long peerId, Long ownerId, int memberCount,
                        long unread, Message lastMessage, Instant updatedAt) {}
     public record RoomList(Long meId, List<Room> rooms) {}
@@ -32,8 +34,10 @@ public class ChatService {
     private final ChatMemberRepository members;
     private final ChatMessageRepository messages;
     private final UserAccountRepository users;
-    public ChatService(ChatRoomRepository rooms, ChatMemberRepository members, ChatMessageRepository messages, UserAccountRepository users) {
-        this.rooms = rooms; this.members = members; this.messages = messages; this.users = users;
+    private final ChatAttachmentRepository attachments;
+    public ChatService(ChatRoomRepository rooms, ChatMemberRepository members, ChatMessageRepository messages, UserAccountRepository users,
+                       ChatAttachmentRepository attachments) {
+        this.rooms = rooms; this.members = members; this.messages = messages; this.users = users; this.attachments = attachments;
     }
     private Failure fail(HttpStatus status, String code) { return new Failure(status, code); }
     private UserAccount me(String email) { return users.findByEmailIgnoreCase(email).orElseThrow(() -> fail(HttpStatus.UNAUTHORIZED,"LOGIN")); }
@@ -51,21 +55,33 @@ public class ChatService {
     private Map<Long,ChatIdentity> accounts(Collection<Long> ids) {
         return ids.isEmpty() ? Map.of() : users.findChatIdentities(new HashSet<>(ids)).stream().collect(Collectors.toMap(ChatIdentity::getId,u -> u));
     }
+    private Map<Long, Attachment> attachmentMetadata(Collection<Long> ids) {
+        if (ids.isEmpty()) return Map.of();
+        return attachments.metadata(ids).stream().collect(Collectors.toMap(ChatAttachmentRepository.Metadata::getId,
+            a -> new Attachment(a.getName(), a.getMediaType(), a.getSize())));
+    }
     private List<Message> views(List<ChatMessage> rows, Long viewer) {
+        if (rows.isEmpty()) return List.of();
         var originals = messages.findAllById(rows.stream().map(m -> m.replyToId).filter(Objects::nonNull).toList())
             .stream().collect(Collectors.toMap(m -> m.id,m -> m));
         var ids = new HashSet<Long>(); rows.forEach(m -> ids.add(m.senderId)); originals.values().forEach(m -> ids.add(m.senderId));
         var accounts = accounts(ids);
+        var messageIds = new HashSet<>(originals.keySet());
+        rows.forEach(m -> messageIds.add(m.id));
+        var files = attachmentMetadata(messageIds);
         return rows.stream().map(m -> {
             var original = originals.get(m.replyToId);
             Quote quote = m.replyToId == null ? null : original != null && original.roomId.equals(m.roomId)
-                ? new Quote(original.id,person(original.senderId,accounts,viewer),original.text)
+                ? new Quote(original.id,person(original.senderId,accounts,viewer),previewText(original, files.get(original.id)))
                 : new Quote(m.replyToId,null,null);
             var counts = m.reactions.values().stream().collect(Collectors.groupingBy(e -> e,TreeMap::new,Collectors.counting()));
             var reactions = counts.entrySet().stream().map(e -> new Reaction(e.getKey(),e.getValue(),e.getKey().equals(m.reactions.get(viewer)))).toList();
             return new Message(m.id,person(m.senderId,accounts,viewer),m.text,m.createdAt,m.clientId,m.editedAt,
-                quote,m.forwarded,m.pinned,m.favorites.contains(viewer),reactions);
+                quote,m.forwarded,m.pinned,m.favorites.contains(viewer),reactions,files.get(m.id));
         }).toList();
+    }
+    private String previewText(ChatMessage message, Attachment attachment) {
+        return message.text.isEmpty() && attachment != null ? attachment.name() : message.text;
     }
     private Room view(ChatRoom room, Long viewer) {
         var participants = members.findByRoomIdOrderByUserId(room.id);
@@ -88,6 +104,7 @@ public class ChatService {
         var unread = messages.unreadForRooms(ids,viewer).stream().collect(Collectors.toMap(ChatMessageRepository.Unread::getRoomId,ChatMessageRepository.Unread::getTotal));
         var userIds = new HashSet<Long>(); people.values().forEach(list -> list.forEach(m -> userIds.add(m.userId))); latest.values().forEach(m -> userIds.add(m.senderId));
         var accounts = accounts(userIds);
+        var files = attachmentMetadata(latest.values().stream().map(m -> m.id).toList());
         return new RoomList(viewer,visible.stream().map(room -> {
             var participants = people.getOrDefault(room.id,List.of());
             Long peerId = room.kind.equals("DIRECT") ? participants.stream().map(m -> m.userId).filter(uid -> !uid.equals(viewer)).findFirst().orElse(null) : null;
@@ -95,7 +112,7 @@ public class ChatService {
             ChatMessage last = latest.get(room.id);
             return new Room(room.id,room.kind,name,peerId,room.ownerId,room.kind.equals("GLOBAL") ? 0 : participants.size(),unread.getOrDefault(room.id,0L),
                 last == null ? null : new Message(last.id,person(last.senderId,accounts,viewer),last.text,last.createdAt,last.clientId,last.editedAt,
-                    null,last.forwarded,last.pinned,false,List.of()),room.updatedAt);
+                    null,last.forwarded,last.pinned,false,List.of(),files.get(last.id)),room.updatedAt);
         }).toList());
     }
     @Transactional(readOnly = true)
@@ -193,29 +210,62 @@ public class ChatService {
         return send(email,id,text,clientId,null);
     }
     public Message send(String email, String id, String text, UUID clientId, Long replyToId) {
-        Long viewer = lockedMe(email).getId(); var room = accessible(id,viewer,true);
+        return send(email, id, text, clientId, replyToId, null);
+    }
+
+    public Message send(String email, String id, String text, UUID clientId, Long replyToId, MultipartFile upload) {
+        Long viewer = lockedMe(email).getId();
+        accessible(id,viewer,false);
         var previous = messages.findByRoomIdAndSenderIdAndClientId(id,viewer,clientId.toString());
         if (previous.isPresent()) return views(List.of(previous.get()),viewer).getFirst();
         String body = text.strip();
-        if (body.isEmpty() || body.length() > 4000 || body.indexOf('\0') >= 0) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
-        if (messages.countBySenderIdAndCreatedAtAfter(viewer,Instant.now().minusSeconds(60)) >= 30) throw fail(HttpStatus.TOO_MANY_REQUESTS,"RATE_LIMIT");
+        validateSend(viewer, body, upload != null);
+        var file = upload == null ? null : ChatFileValidator.read(upload);
+        var room = accessible(id,viewer,true);
         if (replyToId != null) messageInRoom(id,replyToId);
-        var entity = new ChatMessage(id,viewer,body,clientId.toString()); entity.replyToId=replyToId;
+        return persistMessage(viewer, room, body, clientId, replyToId, file, false);
+    }
+
+    private void validateSend(Long viewer, String body, boolean hasFile) {
+        if ((!hasFile && body.isEmpty()) || body.length() > 4000 || body.indexOf('\0') >= 0)
+            throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
+        if (messages.countBySenderIdAndCreatedAtAfter(viewer,Instant.now().minusSeconds(60)) >= 30)
+            throw fail(HttpStatus.TOO_MANY_REQUESTS,"RATE_LIMIT");
+    }
+
+    private Message persistMessage(Long viewer, ChatRoom room, String body, UUID clientId,
+                                   Long replyToId, ChatFileValidator.File file, boolean forwarded) {
+        if (file != null && attachments.bytesUsed(viewer) + file.data().length > ChatFileValidator.USER_QUOTA)
+            throw fail(HttpStatus.CONFLICT, "FILE_QUOTA");
+        var entity = new ChatMessage(room.id,viewer,body,clientId.toString());
+        entity.replyToId = replyToId;
+        entity.forwarded = forwarded;
         var message = messages.saveAndFlush(entity);
+        if (file != null) attachments.saveAndFlush(new ChatAttachment(message, file));
         room.updatedAt = message.createdAt;
         return views(List.of(message),viewer).getFirst();
+    }
+
+    @Transactional(readOnly = true)
+    public ChatFileValidator.File download(String email, String room, Long messageId) {
+        Long viewer = me(email).getId();
+        accessible(room,viewer,false);
+        messageInRoom(room,messageId);
+        return attachments.findById(messageId).map(ChatAttachment::file)
+            .orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
     }
     public Message editMessage(String email, String id, Long messageId, String text) {
         Long viewer=me(email).getId(); accessible(id,viewer,true);
         var message=messages.findById(messageId).filter(m -> m.roomId.equals(id)).orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
         if(!message.senderId.equals(viewer)) throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
-        String body=text.strip();if(body.isEmpty() || body.length()>4000 || body.indexOf('\0')>=0) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
+        String body=text.strip();if((body.isEmpty() && !attachments.existsById(messageId)) || body.length()>4000 || body.indexOf('\0')>=0) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
         message.text=body;message.editedAt=Instant.now();return views(List.of(message),viewer).getFirst();
     }
     public void deleteMessage(String email, String id, Long messageId) {
         Long viewer=me(email).getId(); accessible(id,viewer,true);
         var message=messages.findById(messageId).filter(m -> m.roomId.equals(id)).orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
         if(!message.senderId.equals(viewer)) throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
+        attachments.deleteForMessage(message.id);
         messages.delete(message);
     }
     @Transactional(readOnly=true)
@@ -247,12 +297,22 @@ public class ChatService {
         return views(List.of(message),user.getId()).getFirst();
     }
     public Message forward(String email,String sourceRoom,Long id,String target,UUID clientId) {
-        // Lock user first, like send(), so retries cannot create duplicate forwarded messages.
-        Long viewer=lockedMe(email).getId();accessible(sourceRoom,viewer,false);accessible(target,viewer,false);
-        var source=messageInRoom(sourceRoom,id);
-        var sent=send(email,target,source.text,clientId);
-        var message=messageInRoom(target,sent.id());message.forwarded=true;
-        return views(List.of(message),viewer).getFirst();
+        Long viewer = lockedMe(email).getId();
+        // Acquire the room locks in the same order when forwarding in either direction.
+        ChatRoom destination;
+        if (sourceRoom.compareTo(target) < 0) {
+            accessible(sourceRoom,viewer,true);
+            destination = accessible(target,viewer,true);
+        } else {
+            destination = accessible(target,viewer,true);
+            if (!sourceRoom.equals(target)) accessible(sourceRoom,viewer,true);
+        }
+        var previous = messages.findByRoomIdAndSenderIdAndClientId(target,viewer,clientId.toString());
+        if (previous.isPresent()) return views(List.of(previous.get()),viewer).getFirst();
+        var source = messageInRoom(sourceRoom,id);
+        var file = attachments.findById(id).map(ChatAttachment::file).orElse(null);
+        validateSend(viewer, source.text, file != null);
+        return persistMessage(viewer, destination, source.text, clientId, null, file, true);
     }
     @Transactional(readOnly=true)
     public List<Message> saved(String email,String room,String kind) {

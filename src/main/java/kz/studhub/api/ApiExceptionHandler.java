@@ -1,6 +1,7 @@
 package kz.studhub.api;
 
 import kz.studhub.service.ResourceNotFoundException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.http.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -9,6 +10,11 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<Map<String,String>> uploadTooLarge() {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).cacheControl(CacheControl.noStore())
+            .body(Map.of("error", "FILE_LIMIT"));
+    }
     @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<Map<String,String>> notFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
