@@ -1,6 +1,7 @@
 package kz.studhub.web;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import kz.studhub.api.AssistantApiController;
 import kz.studhub.assistant.*;
 import kz.studhub.config.SecurityConfig;
@@ -25,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(AssistantApiController.class)
 @Import({SecurityConfig.class,AssistantUsageLimiter.class})
 class AssistantApiSecurityTest {
+    private static final AtomicLong ACCOUNT_IDS = new AtomicLong();
     @Autowired MockMvc mvc;
     @MockitoBean GeminiClient gemini;
     @MockitoBean LectureFileReader files;
@@ -33,10 +35,15 @@ class AssistantApiSecurityTest {
     @MockitoBean CustomUserDetailsService userDetails;
     @MockitoBean TwoFactorService twoFactor;
     private MockMultipartFile request(String mode) {
-        return new MockMultipartFile("request","","application/json",("{\"mode\":\""+mode+"\",\"message\":\"Explain collections\",\"language\":\"ru\",\"history\":[]}").getBytes());
+        return request(mode, true);
+    }
+    private MockMultipartFile request(String mode, boolean consent) {
+        String payload = "{\"mode\":\""+mode+"\",\"message\":\"Explain collections\",\"language\":\"ru\","
+            + "\"history\":[],\"fileConsent\":"+consent+"}";
+        return new MockMultipartFile("request","","application/json",payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
     @BeforeEach void setup() {
-        var user = new UserAccount(); user.setId(1L); user.setFullName("Student"); user.setEmail("student@example.com");
+        var user = new UserAccount(); user.setId(ACCOUNT_IDS.incrementAndGet()); user.setFullName("Student"); user.setEmail("student@example.com");
         when(users.findByEmailIgnoreCase(user.getEmail())).thenReturn(Optional.of(user)); when(assignments.findAll()).thenReturn(List.of());
         when(gemini.configured()).thenReturn(true); when(files.readAll(any())).thenReturn(List.of());
         when(gemini.answer(any(),any())).thenReturn(new AssistantAnswer("A lecture summary",List.of()));
@@ -70,6 +77,18 @@ class AssistantApiSecurityTest {
             .andExpect(status().isOk()).andExpect(jsonPath("$.text").value("A lecture summary")).andExpect(header().string("Cache-Control","no-store"));
         verify(gemini).answer(any(),any()); verify(assignments,never()).save(any(),anyLong());
     }
+    @Test void requiresExplicitConsentBeforeReadingOrSendingLecture() throws Exception {
+        var lecture = new MockMultipartFile("files","lecture.txt","text/plain",new byte[]{65});
+        mvc.perform(multipart("/api/assistant/messages").file(request("summary", false)).file(lecture)
+                .with(user("student@example.com")).with(csrf()))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("FILE_CONSENT_REQUIRED"));
+        verify(files,never()).readAll(any());
+        verify(gemini,never()).answer(any(),any());
+        mvc.perform(multipart("/api/assistant/messages").file(request("summary", false))
+                .with(user("student@example.com")).with(csrf()))
+            .andExpect(status().isOk());
+    }
+
     @Test void rejectsInvalidFilesAndDoesNotCallProvider() throws Exception {
         when(files.readAll(any())).thenThrow(new AssistantException(HttpStatus.BAD_REQUEST,"FILE_FORMAT"));
         mvc.perform(multipart("/api/assistant/messages").file(request("summary")).file(new MockMultipartFile("files","lecture.exe","application/octet-stream",new byte[]{1})).with(user("student@example.com")).with(csrf()))
@@ -78,7 +97,7 @@ class AssistantApiSecurityTest {
     }
 
     @Test void uploadedLectureIsNotReusedForAnotherAccount() throws Exception {
-        var other = new UserAccount(); other.setId(2L); other.setEmail("other@example.com");
+        var other = new UserAccount(); other.setId(ACCOUNT_IDS.incrementAndGet()); other.setEmail("other@example.com");
         when(users.findByEmailIgnoreCase(other.getEmail())).thenReturn(Optional.of(other));
         var upload = new MockMultipartFile("files","private.txt","text/plain","PRIVATE_LECTURE".getBytes());
         when(files.readAll(any())).thenAnswer(call -> {

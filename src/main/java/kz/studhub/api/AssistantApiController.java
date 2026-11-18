@@ -26,7 +26,11 @@ public class AssistantApiController {
     @PostMapping(value="/messages",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AssistantAnswer> message(Authentication authentication, @Valid @RequestPart("request") AssistantMessage request,
                                                    @RequestPart(value="files",required=false) List<MultipartFile> uploads) {
-        if (request.message().isBlank() && (uploads == null || uploads.isEmpty())) throw new AssistantException(HttpStatus.BAD_REQUEST,"EMPTY_MESSAGE");
+        boolean hasFiles = uploads != null && !uploads.isEmpty();
+        if (request.message().isBlank() && !hasFiles)
+            throw new AssistantException(HttpStatus.BAD_REQUEST, "EMPTY_MESSAGE");
+        if (hasFiles && !request.fileConsent())
+            throw new AssistantException(HttpStatus.BAD_REQUEST, "FILE_CONSENT_REQUIRED");
         if (!gemini.configured()) throw new AssistantException(HttpStatus.SERVICE_UNAVAILABLE,"NOT_CONFIGURED");
         Long accountId = users.findByEmailIgnoreCase(authentication.getName()).orElseThrow(() -> new AssistantException(HttpStatus.UNAUTHORIZED,"UNAUTHORIZED")).getId();
         try (var lease = usage.acquire(accountId)) {
