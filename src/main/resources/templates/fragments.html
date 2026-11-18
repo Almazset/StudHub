@@ -40,6 +40,7 @@
     <a class="sidebar-link" data-nav="/" th:href="@{/}" th:aria-label="#{nav.dashboard}" th:title="#{nav.dashboard}"><i class="bi bi-grid-1x2"></i><span th:text="#{nav.dashboard}">Личный кабинет</span></a>
     <a class="sidebar-link" data-nav="/courses" th:href="@{/courses}" th:aria-label="#{nav.courses}" th:title="#{nav.courses}"><i class="bi bi-journals"></i><span th:text="#{nav.courses}">Курсы</span></a>
     <a class="sidebar-link" data-nav="/assignments" th:href="@{/assignments}" th:aria-label="#{nav.assignments}" th:title="#{nav.assignments}"><i class="bi bi-check2-square"></i><span th:text="#{nav.assignments}">Задания</span></a>
+    <a class="sidebar-link" data-nav="/calendar" th:href="@{/calendar}" th:aria-label="#{nav.calendar}" th:title="#{nav.calendar}"><i class="bi bi-calendar3" aria-hidden="true"></i><span th:text="#{nav.calendar}">Календарь</span></a>
     <a class="sidebar-link" data-nav="/projects" th:href="@{/projects}" aria-label="Проекты" title="Проекты"><i class="bi bi-folder"></i><span>Проекты</span></a>
     <a class="sidebar-link" data-nav="/users" th:if="${currentUser != null and currentUser.role.name() == 'ADMIN'}" th:href="@{/users}" th:aria-label="#{nav.users}" th:title="#{nav.users}"><i class="bi bi-people"></i><span th:text="#{nav.users}">Пользователи</span></a>
     <a class="sidebar-link" data-nav="/friends" th:href="@{/friends}" aria-label="Друзья" title="Друзья"><i class="bi bi-person-heart"></i><span>Друзья</span></a>

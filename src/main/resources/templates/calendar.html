@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments :: head(#{nav.calendar})}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/study-calendar.css}">
+</head>
+<body class="app-shell" data-page="calendar">
+<th:block th:replace="~{fragments :: skip}"></th:block>
+<th:block th:replace="~{fragments :: sidebar}"></th:block>
+<div class="drawer-backdrop" data-drawer-close></div>
+<div class="app-main">
+  <th:block th:replace="~{fragments :: topbar(#{nav.calendar})}"></th:block>
+  <main id="main-content" class="content container-fluid">
+    <div class="study-calendar" data-study-calendar data-user-content>
+      <header class="study-heading">
+        <div>
+          <h2 data-study-copy="heading">Учебный календарь</h2>
+          <p data-study-copy="subheading">Дедлайны и личный план в одном расписании.</p>
+        </div>
+        <button class="study-button study-button-primary" type="button" data-study-add disabled>
+          <i class="bi bi-plus-lg" aria-hidden="true"></i>
+          <span data-study-copy="add">Добавить в план</span>
+        </button>
+      </header>
+
+      <div class="study-feedback" data-study-feedback role="alert" hidden>
+        <span data-study-error></span>
+        <button class="study-button study-button-compact" type="button" data-study-retry data-study-copy="retry">Повторить</button>
+      </div>
+
+      <div class="study-board">
+        <section class="study-schedule" aria-labelledby="study-period">
+          <header class="study-schedule-header">
+            <div class="study-period-row">
+              <div>
+                <h3 id="study-period" data-study-period aria-live="polite">Расписание</h3>
+                <p class="study-zone" data-study-zone hidden><i class="bi bi-globe2" aria-hidden="true"></i> <span></span></p>
+              </div>
+              <div class="study-segment" role="group" data-study-label="viewLabel" aria-label="Вид календаря">
+                <button type="button" data-study-view="day" data-study-copy="day" aria-pressed="false">День</button>
+                <button type="button" data-study-view="week" data-study-copy="week" aria-pressed="true">Неделя</button>
+                <button type="button" data-study-view="month" data-study-copy="month" aria-pressed="false">Месяц</button>
+              </div>
+            </div>
+            <div class="study-nav">
+              <div class="study-step">
+                <button class="study-icon-button" type="button" data-study-nav="prev" data-study-label="previous" aria-label="Предыдущий период" disabled>
+                  <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                </button>
+                <button class="study-button study-today-button" type="button" data-study-nav="today" data-study-copy="today" disabled>Сегодня</button>
+                <button class="study-icon-button" type="button" data-study-nav="next" data-study-label="next" aria-label="Следующий период" disabled>
+                  <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </button>
+              </div>
+              <label class="study-date-picker">
+                <span class="visually-hidden" data-study-copy="dateLabel">Выбрать дату</span>
+                <input type="date" data-study-date min="0001-01-01" max="9999-12-31" disabled>
+              </label>
+            </div>
+          </header>
+
+          <p class="study-loading" data-study-loading role="status">
+            <span class="study-loading-dot" aria-hidden="true"></span>
+            <span data-study-copy="loading">Загружаем расписание…</span>
+          </p>
+          <div data-study-schedule aria-busy="true"></div>
+
+          <div class="study-legend" data-study-legend hidden>
+            <span><i class="study-dot study-dot-overdue" aria-hidden="true"></i><span data-study-copy="overdue">Просрочено</span></span>
+            <span><i class="study-dot study-dot-soon" aria-hidden="true"></i><span data-study-copy="nearby">Сегодня и скоро</span></span>
+            <span><i class="study-dot study-dot-plan" aria-hidden="true"></i><span data-study-copy="plan">Личный план</span></span>
+          </div>
+        </section>
+
+        <aside class="study-focus" aria-labelledby="study-focus-heading">
+          <div class="study-focus-heading">
+            <span class="study-focus-icon"><i class="bi bi-stars" aria-hidden="true"></i></span>
+            <div>
+              <h3 id="study-focus-heading" data-study-copy="focusHeading">Что учить сегодня</h3>
+              <p data-study-today-date></p>
+            </div>
+          </div>
+          <div class="study-focus-body" data-study-focus aria-busy="true"></div>
+        </aside>
+      </div>
+
+      <dialog class="study-editor" data-study-editor aria-labelledby="study-editor-heading">
+        <form data-study-form>
+          <header class="study-editor-header">
+            <h3 id="study-editor-heading" data-study-editor-title>Добавить в план</h3>
+            <button class="study-icon-button" type="button" data-study-close data-study-label="close" aria-label="Закрыть">
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+          </header>
+          <div class="study-editor-error" data-study-editor-error role="alert" hidden></div>
+          <div class="study-fields">
+            <label>
+              <span data-study-copy="titleLabel">Что запланировать</span>
+              <input name="title" type="text" maxlength="150" required autofocus>
+            </label>
+            <div class="study-fields-pair">
+              <label>
+                <span data-study-copy="planDate">Дата</span>
+                <input name="date" type="date" min="0001-01-01" max="9999-12-31" required>
+              </label>
+              <label>
+                <span data-study-copy="minutesLabel">Минуты</span>
+                <input name="minutes" type="number" min="5" max="720" required>
+              </label>
+            </div>
+            <label>
+              <span data-study-copy="descriptionLabel">Заметка (необязательно)</span>
+              <textarea name="description" rows="3" maxlength="1000"></textarea>
+            </label>
+            <label class="study-check-field">
+              <input name="completed" type="checkbox">
+              <span data-study-copy="completed">Выполнено</span>
+            </label>
+          </div>
+          <footer class="study-editor-footer">
+            <button class="study-button study-delete" data-study-delete type="button" data-study-copy="delete" hidden>Удалить</button>
+            <div>
+              <button class="study-button" type="button" data-study-cancel data-study-copy="cancel">Отмена</button>
+              <button class="study-button study-button-primary" type="submit" data-study-save data-study-copy="save">Сохранить</button>
+            </div>
+          </footer>
+        </form>
+      </dialog>
+
+      <div class="visually-hidden" data-study-announcement role="status"></div>
+      <noscript><p class="study-feedback">Для просмотра календаря и управления планом включите JavaScript.</p></noscript>
+    </div>
+  </main>
+  <th:block th:replace="~{fragments :: footer}"></th:block>
+</div>
+<th:block th:replace="~{fragments :: toastRegion}"></th:block>
+<th:block th:replace="~{fragments :: scripts}"></th:block>
+<script th:src="@{/js/calendar.js}" defer></script>
+</body>
+</html>
