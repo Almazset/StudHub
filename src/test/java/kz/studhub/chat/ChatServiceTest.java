@@ -2,18 +2,21 @@ package kz.studhub.chat;
 
 import java.util.*;
 import kz.studhub.model.UserAccount;
+import kz.studhub.notification.NotificationService;
 import kz.studhub.repository.UserAccountRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import static org.assertj.core.api.Assertions.*;
 
 @DataJpaTest(showSql=false,properties={"spring.datasource.url=jdbc:h2:mem:chat;MODE=PostgreSQL;DB_CLOSE_DELAY=-1","spring.jpa.hibernate.ddl-auto=create-drop","spring.jpa.show-sql=false"})
 @Import(ChatService.class)
 class ChatServiceTest {
     @Autowired ChatService chat;
+    @MockitoBean NotificationService notifications;
     @Autowired UserAccountRepository users;
     @Autowired ChatRoomRepository rooms;
     @Autowired ChatMemberRepository members;

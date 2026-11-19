@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import kz.studhub.model.UserAccount;
+import kz.studhub.notification.NotificationService;
+import kz.studhub.notification.NotificationType;
 import kz.studhub.repository.UserAccountRepository;
 import kz.studhub.repository.UserAccountRepository.ChatIdentity;
 import org.springframework.data.domain.PageRequest;
@@ -35,9 +37,11 @@ public class ChatService {
     private final ChatMessageRepository messages;
     private final UserAccountRepository users;
     private final ChatAttachmentRepository attachments;
-    public ChatService(ChatRoomRepository rooms, ChatMemberRepository members, ChatMessageRepository messages, UserAccountRepository users,
-                       ChatAttachmentRepository attachments) {
-        this.rooms = rooms; this.members = members; this.messages = messages; this.users = users; this.attachments = attachments;
+    private final NotificationService notifications;
+    public ChatService(ChatRoomRepository rooms, ChatMemberRepository members, ChatMessageRepository messages,
+                       UserAccountRepository users, ChatAttachmentRepository attachments, NotificationService notifications) {
+        this.rooms = rooms; this.members = members; this.messages = messages; this.users = users;
+        this.attachments = attachments; this.notifications = notifications;
     }
     private Failure fail(HttpStatus status, String code) { return new Failure(status, code); }
     private UserAccount me(String email) { return users.findByEmailIgnoreCase(email).orElseThrow(() -> fail(HttpStatus.UNAUTHORIZED,"LOGIN")); }
@@ -243,7 +247,17 @@ public class ChatService {
         var message = messages.saveAndFlush(entity);
         if (file != null) attachments.saveAndFlush(new ChatAttachment(message, file));
         room.updatedAt = message.createdAt;
+        notifyRoomMembers(room, viewer);
         return views(List.of(message),viewer).getFirst();
+    }
+
+    private void notifyRoomMembers(ChatRoom room, Long senderId) {
+        if (room.kind.equals("GLOBAL")) return;
+        members.findByRoomIdOrderByUserId(room.id).stream()
+            .map(member -> member.userId)
+            .filter(recipient -> !recipient.equals(senderId))
+            .forEach(recipient -> notifications.publish(recipient, NotificationType.CHAT_MESSAGE,
+                "room:" + room.id, "", "/chat?room=" + room.id));
     }
 
     @Transactional(readOnly = true)

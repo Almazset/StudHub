@@ -10,6 +10,8 @@
     profileHint: ['Ваше имя, фото и данные для входа.', 'Your name, photo and sign-in details.', 'Атыңыз, фотосуретіңіз және кіру деректері.'],
     privacy: ['Приватность и безопасность', 'Privacy & security', 'Құпиялық және қауіпсіздік'],
     privacyHint: ['Видимость профиля, защита входа и ваши устройства.', 'Profile visibility, sign-in protection and your devices.', 'Профильдің көрінуі, кіруді қорғау және құрылғыларыңыз.'],
+    notifications: ['Уведомления', 'Notifications', 'Хабарландырулар'],
+    notificationsHint: ['Выберите, о чём StudHub будет сообщать в колокольчике.', 'Choose what appears in the notification bell.', 'Қоңырауда қандай хабарландырулар көрсетілетінін таңдаңыз.'],
     about: ['О сайте', 'About StudHub', 'Сайт туралы'],
     aboutHint: ['Ответы на вопросы, поддержка и информация о сервисе.', 'Answers, support and service information.', 'Сұрақтарға жауаптар, қолдау және сервис туралы ақпарат.'],
     theme: ['Тема оформления', 'Color theme', 'Көрініс тақырыбы'],

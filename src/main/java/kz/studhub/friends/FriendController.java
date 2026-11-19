@@ -5,6 +5,8 @@ import java.security.Principal;
 import java.time.Instant;
 import java.util.*;
 import kz.studhub.chat.ChatService;
+import kz.studhub.notification.NotificationService;
+import kz.studhub.notification.NotificationType;
 import kz.studhub.repository.UserAccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +15,15 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController @RequestMapping("/api/friends")
 public class FriendController {
  private final FriendshipRepository friends; private final UserAccountRepository users; private final ChatService chat; private final PresenceService presence;
- public FriendController(FriendshipRepository f,UserAccountRepository u,ChatService c,PresenceService presence){friends=f;users=u;chat=c;this.presence=presence;}
+ private final NotificationService notifications;
+ public FriendController(FriendshipRepository friends, UserAccountRepository users, ChatService chat,
+         PresenceService presence, NotificationService notifications) {
+  this.friends = friends;
+  this.users = users;
+  this.chat = chat;
+  this.presence = presence;
+  this.notifications = notifications;
+ }
  public record Request(@NotNull @Positive Long userId) {}
  private Long me(Principal p){return users.findByEmailIgnoreCase(p.getName()).orElseThrow().getId();}
  private ResponseStatusException notFound(){return new ResponseStatusException(HttpStatus.NOT_FOUND);}
@@ -27,7 +37,10 @@ public class FriendController {
  Long me=me(principal),peer=req.userId();if(me.equals(peer))throw new ResponseStatusException(HttpStatus.BAD_REQUEST);Long lo=Math.min(me,peer),hi=Math.max(me,peer);
  users.findLockedById(lo).orElseThrow(this::notFound); var target=users.findById(peer).filter(u->"members".equals(u.getProfileVisibility())).orElseThrow(this::notFound);
  if(friends.findByLowUserIdAndHighUserId(lo,hi).isPresent())throw new ResponseStatusException(HttpStatus.CONFLICT,"Заявка или дружба уже существует");
- Friendship f=new Friendship();f.lowUserId=lo;f.highUserId=hi;f.requesterId=me;f.status="PENDING";f.createdAt=Instant.now();friends.saveAndFlush(f);return view(f,me);
+ Friendship f=new Friendship();f.lowUserId=lo;f.highUserId=hi;f.requesterId=me;f.status="PENDING";f.createdAt=Instant.now();
+ friends.saveAndFlush(f);
+ notifications.publish(target.getId(), NotificationType.FRIEND_REQUEST, "friendship:" + f.id, "", "/friends");
+ return view(f,me);
  }
  @PostMapping("/{id}/accept") @Transactional public Map<String,Object> accept(Principal p,@PathVariable Long id){Long me=me(p);Friendship f=friends.findById(id).orElseThrow(this::notFound);if(!f.lowUserId.equals(me)&&!f.highUserId.equals(me))throw notFound();if(f.requesterId.equals(me)||!f.status.equals("PENDING"))throw new ResponseStatusException(HttpStatus.CONFLICT);f.status="ACCEPTED";return view(friends.saveAndFlush(f),me);}
  @DeleteMapping("/{id}") @Transactional public Map<String,Boolean> remove(Principal p,@PathVariable Long id){Long me=me(p);Friendship f=friends.findById(id).orElseThrow(this::notFound);if(!f.lowUserId.equals(me)&&!f.highUserId.equals(me))throw notFound();friends.delete(f);return Map.of("ok",true);}

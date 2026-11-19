@@ -1,26 +1,25 @@
 package kz.studhub.calendar;
 
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 record CalendarWindow(String view, LocalDate date, LocalDate today, ZoneId zone, LocalDate from, LocalDate to) {
     private static final LocalDate FIRST_DATE = LocalDate.of(1, 1, 1);
     private static final LocalDate LAST_DATE = LocalDate.of(9999, 12, 31);
-    private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Almaty");
-    private static final Set<String> AVAILABLE_ZONES = ZoneId.getAvailableZoneIds();
     private static final Pattern DATE_FORMAT = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}");
 
     static CalendarWindow resolve(String view, String date, String requestedZone, Clock clock) {
-        ZoneId zone = DEFAULT_ZONE;
-        if (requestedZone != null) {
-            if (!AVAILABLE_ZONES.contains(requestedZone)) throw new InvalidParameter("INVALID_TIME_ZONE");
-            zone = ZoneId.of(requestedZone);
+        ZoneId zone;
+        try {
+            zone = StudyTimeZone.resolve(requestedZone);
+        } catch (DateTimeException ex) {
+            throw new InvalidParameter("INVALID_TIME_ZONE");
         }
         LocalDate today = LocalDate.now(clock.withZone(zone));
         LocalDate anchor = date == null ? today : parseDate(date);

@@ -22,6 +22,7 @@
   <link rel="stylesheet" th:href="@{/css/motion.css}">
   <link rel="stylesheet" th:href="@{/css/themes.css}">
   <link rel="stylesheet" th:href="@{/css/news.css}">
+  <link rel="stylesheet" th:href="@{/css/notifications.css}">
 </th:block>
 
 <a th:fragment="skip" class="skip-link" href="#main-content" th:text="#{nav.skip}">Перейти к содержимому</a>
@@ -63,13 +64,30 @@
         <form class="global-search-form" th:action="@{/assignments}" method="get"><label for="globalSearch" th:text="#{topbar.searchHint}">Поиск по заданиям и курсам</label><input id="globalSearch" name="search" type="search" autocomplete="off" required th:placeholder="#{topbar.searchPlaceholder}"><div class="global-search-actions"><button type="submit" th:text="#{topbar.searchAssignments}">В заданиях</button><button type="submit" th:formaction="@{/courses}" th:text="#{topbar.searchCourses}">В курсах</button></div></form>
       </div>
     </div>
-    <div class="topbar-tool">
-      <button class="icon-button notification-trigger" type="button" data-panel-trigger="notifications" aria-controls="topbarNotifications" aria-expanded="false" th:aria-label="#{topbar.notifications}" th:title="#{topbar.notifications}"><i class="bi bi-bell"></i><span class="notification-dot" th:if="${!#lists.isEmpty(deadlineAlerts)}"></span></button>
-      <div class="topbar-popover notification-popover" id="topbarNotifications" data-panel="notifications" hidden>
-        <div class="popover-heading"><h2 th:text="#{topbar.notifications}">Уведомления</h2><a th:href="@{/assignments}" th:text="#{dashboard.deadlinesAll}">Все задания</a></div>
-        <p class="popover-empty" th:if="${#lists.isEmpty(deadlineAlerts)}" th:text="#{topbar.noNotifications}">Ближайших дедлайнов нет.</p>
-        <a class="notification-item" th:each="a : ${deadlineAlerts}" th:href="@{/assignments/{id}/edit(id=${a.id})}"><span class="notification-icon"><i class="bi bi-calendar-event"></i></span><span><strong th:text="${a.title}">Задание</strong><small><span th:text="${a.course != null ? a.course.title : 'Личное задание'}">Курс</span> · <time th:datetime="${a.dueDate}" th:text="${#temporals.format(a.dueDate, 'd MMM')}">25 окт.</time></small></span></a>
-      </div>
+    <div class="topbar-tool" data-notification-inbox>
+      <button class="icon-button notification-trigger" type="button" data-panel-trigger="notifications"
+              data-notification-trigger aria-controls="topbarNotifications" aria-expanded="false"
+              th:aria-label="#{topbar.notifications}">
+        <i class="bi bi-bell" aria-hidden="true"></i><span class="notification-count" data-notification-badge aria-hidden="true" hidden></span>
+      </button>
+      <section class="topbar-popover notification-popover" id="topbarNotifications" data-panel="notifications"
+               aria-labelledby="notificationHeading" hidden inert>
+        <div class="notification-heading">
+          <h2 id="notificationHeading" data-notification-copy="title" th:text="#{topbar.notifications}">Уведомления</h2>
+          <a class="notification-settings-link" href="/settings#notifications" data-notification-settings-link>
+            <i class="bi bi-gear" aria-hidden="true"></i><span data-notification-copy="settings">Настроить</span>
+          </a>
+        </div>
+        <div class="notification-toolbar">
+          <span class="notification-summary" data-notification-summary></span>
+          <button class="notification-text-button" type="button" data-notification-read-all data-notification-copy="readAll" disabled>Прочитать все</button>
+        </div>
+        <p class="notification-message" data-notification-status role="status" data-notification-copy="loading">Загружаем уведомления…</p>
+        <p class="notification-error" data-notification-error role="alert" hidden></p>
+        <button class="notification-text-button notification-retry" type="button" data-notification-retry
+                data-notification-copy="retry" hidden>Повторить</button>
+        <ul class="notification-list" data-notification-list data-user-content aria-labelledby="notificationHeading"></ul>
+      </section>
     </div>
     <div class="topbar-tool">
       <button class="icon-button" type="button" data-panel-trigger="settings" aria-controls="topbarSettings" aria-expanded="false" th:aria-label="#{topbar.settings}" th:title="#{topbar.settings}"><i class="bi bi-gear"></i></button>
@@ -101,6 +119,7 @@
   <script th:src="@{/js/vendor/bootstrap.bundle.min.js}" defer></script>
   <script th:src="@{/js/settings-i18n.js}" defer></script>
   <script th:src="@{/js/app.js}" defer></script>
+  <script th:src="@{/js/notifications.js}" defer></script>
   <script th:src="@{/js/settings.js}" defer></script>
   <script th:src="@{/js/assistant-copy.js}" defer></script>
   <script th:src="@{/js/assistant-guide.js}" defer></script>
