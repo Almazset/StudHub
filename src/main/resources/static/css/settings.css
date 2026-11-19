@@ -116,7 +116,7 @@ html[data-font-size] .course-card h3 { font-size: calc(20px * var(--studhub-text
 @media (max-width:1100px) { .settings-layout { grid-template-columns: 190px minmax(0,1fr); gap: 20px; } }
 @media (max-width:900px) {
   .settings-layout { grid-template-columns: 1fr; gap: 24px; }
-  .settings-nav { display: flex; overflow-x: auto; position: static; padding-bottom: 6px; }
+  .settings-nav { display: flex; overflow-x: auto; position: relative; top: auto; padding-bottom: 6px; }
   .settings-nav button { flex: none; max-width: 210px; padding: 10px 14px; }
   .settings-nav button>.bi:last-child { display: none; }
 }

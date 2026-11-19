@@ -1,5 +1,6 @@
 package kz.studhub.chat;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
 import java.util.concurrent.*;
@@ -12,6 +13,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -28,12 +32,106 @@ class ChatIntegrationTest {
     @Autowired ObjectMapper json;
     @Autowired UserAccountRepository users;
     @Autowired ChatService chat;
+    @Autowired PlatformTransactionManager transactions;
     @Autowired kz.studhub.repository.CourseRepository courseRepository;
     UserAccount alice,bob,eve;
     UserAccount account(String name) {
         var user=new UserAccount();user.setFullName(name);user.setEmail(UUID.randomUUID()+"@example.com");user.setPassword("test-hash-not-a-login");user.setProfileVisibility("members");return users.saveAndFlush(user);
     }
     @BeforeEach void setup(){alice=account("Chat Alice");bob=account("Chat Bob");eve=account("Chat Eve");}
+    @Test void chatNotificationsCoalesceOnlyCommittedMessagesForRoomPeers() throws Exception {
+        var direct = chat.direct(alice.getEmail(), bob.getId());
+        UUID clientId = UUID.randomUUID();
+        var original = chat.send(alice.getEmail(), direct.id(), "Private lecture draft", clientId);
+        JsonNode first = notifications(bob);
+        assertThat(first.path("unread").asInt()).isEqualTo(1);
+        JsonNode alert = first.path("items").get(0);
+        long alertId = alert.path("id").asLong();
+        assertThat(alert.path("type").asText()).isEqualTo("CHAT_MESSAGE");
+        assertThat(alert.path("href").asText()).isEqualTo("/chat?room=" + direct.id());
+        assertThat(first.toString()).doesNotContain(original.text(), alice.getEmail());
+        assertThat(notificationTypes(alice)).isEmpty();
+        assertThat(notificationTypes(eve)).isEmpty();
+
+        mvc.perform(post("/api/notifications/" + alertId + "/read").with(user(bob.getEmail())).with(csrf()))
+            .andExpect(status().isNoContent());
+        chat.send(alice.getEmail(), direct.id(), "Private lecture draft", clientId);
+        assertThat(notifications(bob).path("unread").asInt()).isZero();
+
+        chat.send(alice.getEmail(), direct.id(), "Follow-up", UUID.randomUUID());
+        JsonNode refreshed = notifications(bob);
+        assertThat(refreshed.path("unread").asInt()).isEqualTo(1);
+        assertThat(refreshed.path("items").size()).isEqualTo(1);
+        assertThat(refreshed.path("items").get(0).path("id").asLong()).isEqualTo(alertId);
+
+        var group = chat.group(alice.getEmail(), "Study group", Set.of(bob.getId(), eve.getId()));
+        chat.forward(alice.getEmail(), direct.id(), original.id(), group.id(), UUID.randomUUID());
+        chat.send(alice.getEmail(), "global", "Public message", UUID.randomUUID());
+        assertThat(notificationTypes(alice)).isEmpty();
+        assertThat(notificationTypes(bob)).containsExactly("CHAT_MESSAGE", "CHAT_MESSAGE");
+        assertThat(notificationTypes(eve)).containsExactly("CHAT_MESSAGE");
+
+        var rolledBack = chat.direct(alice.getEmail(), eve.getId());
+        new TransactionTemplate(transactions).executeWithoutResult(tx -> {
+            chat.send(alice.getEmail(), rolledBack.id(), "Discarded draft", UUID.randomUUID());
+            tx.setRollbackOnly();
+        });
+        assertThat(chat.history(eve.getEmail(), rolledBack.id(), null, null).messages()).isEmpty();
+        assertThat(notificationTypes(eve)).containsExactly("CHAT_MESSAGE");
+    }
+
+    @Test void friendRequestsInvitationsAndTaskAssignmentsNotifyOnlyOnNewTransitions() throws Exception {
+        var invitation = Map.of("userId", bob.getId());
+        action(post("/api/friends"), alice, invitation, 200);
+        action(post("/api/friends"), alice, invitation, 409);
+        assertThat(notificationTypes(bob)).containsExactly("FRIEND_REQUEST");
+
+        long project = action(post("/api/projects"), alice, Map.of("title", "Notification test"), 200)
+            .path("id").asLong();
+        String path = "/api/projects/" + project;
+        action(post(path + "/members"), alice, invitation, 200);
+        action(post(path + "/members"), alice, invitation, 200);
+        assertThat(notificationTypes(bob)).containsExactlyInAnyOrder("PROJECT_INVITATION", "FRIEND_REQUEST");
+        action(post(path + "/invitation/accept"), bob, null, 200);
+        long task = action(post(path + "/tasks"), alice, Map.of("title", "Initial task", "assigneeId", bob.getId()), 200)
+            .path("id").asLong();
+        String taskPath = path + "/tasks/" + task;
+        action(put(taskPath), alice, Map.of("title", "Edited task", "assigneeId", bob.getId()), 200);
+        action(put(taskPath), alice, Map.of("title", "Unauthorized assignee", "assigneeId", eve.getId()), 400);
+
+        assertThat(notificationTypes(bob)).containsExactlyInAnyOrder("FRIEND_REQUEST", "PROJECT_INVITATION", "TASK_ASSIGNED");
+        assertThat(notificationTypes(eve)).isEmpty();
+        assertThat(notificationTypes(alice)).isEmpty();
+
+        action(post(path + "/members"), alice, Map.of("userId", eve.getId()), 200);
+        action(post(path + "/invitation/accept"), eve, null, 200);
+        action(put(taskPath), alice, Map.of("title", "Reassigned task", "assigneeId", eve.getId()), 200);
+        assertThat(notificationTypes(eve)).containsExactlyInAnyOrder("PROJECT_INVITATION", "TASK_ASSIGNED");
+        assertThat(notificationTypes(bob)).containsExactlyInAnyOrder("FRIEND_REQUEST", "PROJECT_INVITATION", "TASK_ASSIGNED");
+
+        action(put(taskPath), alice, Map.of("title", "Returned task", "assigneeId", bob.getId()), 200);
+        assertThat(notificationTypes(bob))
+            .containsExactlyInAnyOrder("FRIEND_REQUEST", "PROJECT_INVITATION", "TASK_ASSIGNED", "TASK_ASSIGNED");
+    }
+
+    private JsonNode action(MockHttpServletRequestBuilder request, UserAccount actor, Map<String, ?> body,
+                            int expectedStatus) throws Exception {
+        if (body != null) request.contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(body));
+        var response = mvc.perform(request.with(user(actor.getEmail())).with(csrf()))
+            .andExpect(status().is(expectedStatus)).andReturn().getResponse();
+        return json.readTree(response.getContentAsByteArray());
+    }
+
+    private JsonNode notifications(UserAccount recipient) throws Exception {
+        return action(get("/api/notifications"), recipient, null, 200);
+    }
+
+    private List<String> notificationTypes(UserAccount recipient) throws Exception {
+        List<String> types = new ArrayList<>();
+        notifications(recipient).path("items").forEach(item -> types.add(item.path("type").asText()));
+        return types;
+    }
+
     @Test void courseProgressIsPersonalAndValidatesOwnership() throws Exception {
         var course=new kz.studhub.model.Course();course.setTitle("Study course");course.setTeacherName("Teacher");course=courseRepository.saveAndFlush(course);
         String base="/api/courses/"+course.getId()+"/study-steps";

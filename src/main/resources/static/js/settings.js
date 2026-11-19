@@ -4,8 +4,8 @@
   const t = (key, vars) => i18n.t(key, vars);
   const preview = location.pathname.endsWith('studhub-preview.html');
   const main = document.getElementById('main-content');
-  const sections = ['appearance', 'profile', 'privacy', 'about'];
-  const icons = {appearance:'palette', profile:'person-circle', privacy:'shield-check', about:'info-circle'};
+  const sections = ['appearance', 'profile', 'privacy', ...(preview ? [] : ['notifications']), 'about'];
+  const icons = {appearance:'palette', profile:'person-circle', privacy:'shield-check', notifications:'bell', about:'info-circle'};
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const demoKey = 'studhub-preview-settings-v1';
   let data, section = 'appearance', enrollment = null, recoveryCodes = null;
@@ -139,8 +139,14 @@
     const root = document.querySelector('[data-settings-root]');
     if (!root || !data) return;
     fieldSequence = 0;
-    const render = {appearance:appearancePage,profile:profilePage,privacy:privacyPage,about:aboutPage};
+    const render = {appearance:appearancePage,profile:profilePage,privacy:privacyPage,notifications:() => '<section class="settings-card surface" data-notification-preferences></section>',about:aboutPage};
     root.innerHTML = `<section class="page-intro settings-heading"><div><p class="eyebrow">STUDHUB</p><h2>${t('settings')}</h2><p class="muted-copy">${t('subtitle')}</p></div>${preview ? `<span class="settings-preview-badge">${t('demo')}</span>` : ''}</section><div class="settings-layout"><nav class="settings-nav" aria-label="${t('settings')}">${sections.map(key => `<button type="button" data-settings-section="${key}" ${section === key ? 'aria-current="page"' : ''}><i class="bi bi-${icons[key]}"></i><span>${t(key)}</span><i class="bi bi-chevron-right"></i></button>`).join('')}</nav><div class="settings-content"><header class="settings-section-heading"><h3 tabindex="-1">${t(section)}</h3><p>${t(`${section}Hint`)}</p></header><div class="settings-notice" data-settings-notice role="status" hidden></div>${render[section]()}</div></div>`;
+    if (section === 'notifications') window.StudHubNotifications.mountPreferences(root.querySelector('[data-notification-preferences]'));
+    const navigation = root.querySelector('.settings-nav');
+    const activeTab = navigation?.querySelector('button[aria-current]');
+    if (activeTab && navigation.scrollWidth > navigation.clientWidth) {
+      navigation.scrollLeft = activeTab.offsetLeft - (navigation.clientWidth - activeTab.offsetWidth) / 2;
+    }
     if (focus) root.querySelector('.settings-section-heading h3')?.focus({preventScroll:true});
   }
   function notice(message, error = false) {
@@ -267,6 +273,13 @@
     } finally { form.removeAttribute('aria-busy'); buttons.forEach(button => button.disabled = false); }
   },true);
   document.addEventListener('click', async event => {
+    const settingsLink = event.target.closest('a.settings-menu-link, a[data-notification-settings-link]');
+    if (!preview && settingsLink?.pathname === location.pathname && document.querySelector('[data-settings-root]') &&
+        !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      await open(settingsLink.hash.slice(1));
+      return;
+    }
     const copyId = event.target.closest('[data-copy-user-id]');
     if (copyId) {
       const status = document.querySelector('[data-user-id-copy-status]');

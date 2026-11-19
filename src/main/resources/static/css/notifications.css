@@ -1,0 +1,146 @@
+.topbar-actions .notification-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  padding-inline: 4px;
+  border: 2px solid var(--surface);
+  border-radius: 10px;
+  background: #a33143;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+[data-notification-inbox] [hidden] { display: none; }
+
+.topbar-popover.notification-popover {
+  width: min(390px, calc(100vw - 20px));
+  padding: 16px;
+  max-height: min(65dvh, 480px);
+}
+.notification-heading, .notification-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.notification-heading h2 { margin: 0; }
+.notification-settings-link, .notification-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+}
+.notification-settings-link:hover, .notification-text-button:not(:disabled):hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+.notification-text-button:disabled { opacity: .6; cursor: not-allowed; }
+.notification-toolbar { min-height: 42px; margin-block: 8px 5px; }
+.notification-summary, .notification-message {
+  color: var(--muted);
+  font-size: 12px;
+}
+.notification-message, .notification-error { margin: 6px 0; }
+.notification-error, .notification-prefs-status[role="alert"] {
+  color: var(--danger, #b83f52);
+  font-size: 13px;
+}
+.notification-retry { margin-bottom: 6px; }
+.notification-list { display: grid; gap: 5px; padding: 0; margin: 0; list-style: none; }
+.notification-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  padding-inline-end: 4px;
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid transparent;
+  border-radius: 9px;
+}
+.notification-row.is-unread {
+  background: var(--accent-soft);
+  border-inline-start-color: var(--accent);
+}
+.notification-entry {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 8px;
+  color: var(--ink);
+  border-radius: 7px;
+  text-decoration: none;
+}
+a.notification-entry:hover { background: var(--surface-soft); color: var(--ink); }
+.notification-entry-icon, .notification-pref-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--accent);
+}
+.notification-entry-text { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.notification-entry-text strong { font-size: 13px; line-height: 1.3; }
+.notification-entry-text span, .notification-entry-text time { font-size: 11px; color: var(--muted); }
+.notification-read-button {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.notification-read-button:hover { background: var(--surface-soft); }
+.notification-settings-link:focus-visible, .notification-text-button:focus-visible,
+.notification-entry:focus-visible, .notification-read-button:focus-visible,
+.notification-pref input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.notification-pref-fields { display: grid; gap: 8px; min-width: 0; margin-bottom: 16px; }
+.notification-pref {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.notification-pref:hover, .notification-pref:focus-within { background: var(--surface-soft); }
+.notification-pref-label { color: var(--ink); overflow-wrap: anywhere; }
+.notification-pref input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+[data-theme="dark"] .notification-pref input[type="checkbox"] { color-scheme: dark; }
+.notification-prefs-status { margin: 12px 0 0; color: var(--muted); }
+.notification-prefs-status:empty { margin: 0; }
+
+@media (max-width: 767.98px) {
+  .topbar-popover.notification-popover { padding: 12px; border-radius: 12px; }
+}

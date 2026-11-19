@@ -3,6 +3,8 @@ package kz.studhub.project;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.*;
+import kz.studhub.notification.NotificationService;
+import kz.studhub.notification.NotificationType;
 import kz.studhub.repository.UserAccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -18,7 +20,16 @@ public class ProjectController {
     private final kz.studhub.chat.ChatService chat;
     private final ProjectTaskRepository tasks;
     private final ProjectHistory history;
-    public ProjectController(ProjectRepository projects, UserAccountRepository users, kz.studhub.chat.ChatService chat, ProjectTaskRepository tasks, ProjectHistory history) { this.history=history; this.projects=projects; this.users=users; this.chat=chat; this.tasks=tasks; }
+    private final NotificationService notifications;
+    public ProjectController(ProjectRepository projects, UserAccountRepository users, kz.studhub.chat.ChatService chat,
+                             ProjectTaskRepository tasks, ProjectHistory history, NotificationService notifications) {
+        this.history = history;
+        this.projects = projects;
+        this.users = users;
+        this.chat = chat;
+        this.tasks = tasks;
+        this.notifications = notifications;
+    }
     @PostMapping("/{id}/chat") @Transactional
     public kz.studhub.chat.ChatService.Room openChat(Authentication auth, @PathVariable Long id) {
         Long viewer=userId(auth);
@@ -123,6 +134,8 @@ public class ProjectController {
         if(p.memberIds.size()+p.invitedIds.size()>=30) throw new ResponseStatusException(HttpStatus.CONFLICT,"Лимит участников и приглашений — 30");
         p.invitedIds.add(input.userId());
         history.record(id,auth,"Отправлено приглашение SH-"+input.userId());
+        notifications.publish(input.userId(), NotificationType.PROJECT_INVITATION,
+            "project:" + id + ":invitation:" + UUID.randomUUID(), "", "/projects");
         return view(p,viewer);
     }
 }
