@@ -14,6 +14,12 @@
     </tbody></table></div>
     <div class="empty-state d-none" data-user-empty><span class="empty-illustration"><i class="bi bi-people"></i></span><h3 th:text="#{users.emptyTitle}">Пользователей пока нет</h3></div>
   </section>
+  <details class="surface list-surface mt-4 p-3" data-user-reports>
+    <summary class="fw-semibold" data-report-copy="title">Жалобы на пользователей</summary>
+    <button class="btn btn-light btn-sm mt-3" type="button" data-report-refresh data-report-copy="refresh">Обновить</button>
+    <p class="muted-copy mt-3 mb-0" data-report-status role="status"></p>
+    <ul class="list-unstyled mb-0" data-report-list></ul>
+  </details>
 </main><th:block th:replace="~{fragments :: footer}"></th:block></div>
 <button class="mobile-fab" type="button" data-add-user data-bs-toggle="modal" data-bs-target="#userModal" th:aria-label="#{users.add}" th:title="#{users.add}"><i class="bi bi-plus-lg"></i></button>
 <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content app-modal"><form data-user-form novalidate>
@@ -23,4 +29,5 @@
 </form></div></div></div>
 <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content app-modal"><div class="modal-header"><h2 class="modal-title" id="deleteUserTitle" th:text="#{common.confirmDelete}">Подтвердите удаление</h2><button type="button" class="btn-close" data-bs-dismiss="modal" th:aria-label="#{action.close}"></button></div><div class="modal-body"><p class="delete-message" data-user-delete-message></p><p class="muted-copy" th:text="#{common.deleteWarning}">Это действие нельзя отменить.</p></div><div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal" th:text="#{action.cancel}">Отмена</button><button class="btn btn-danger" type="button" data-confirm-user-delete th:text="#{action.delete}">Удалить</button></div></div></div></div>
 <th:block th:replace="~{fragments :: toastRegion}"></th:block><th:block th:replace="~{fragments :: scripts}"></th:block>
+<script th:src="@{/js/user-reports.js}" defer></script>
 </body></html>

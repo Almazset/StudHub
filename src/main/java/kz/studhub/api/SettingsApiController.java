@@ -42,7 +42,9 @@ public class SettingsApiController {
                                  @NotBlank @Size(min=8,max=72) String newPassword,
                                  @NotBlank @Size(max=72) String confirmPassword, @Size(max=32) String code) {}
     public record Proof(@NotBlank @Size(max=100) String password, @Size(max=32) String code) {}
-    public record Visibility(@NotNull @Pattern(regexp="private|members") String visibility) {}
+    public record Privacy(@Pattern(regexp="private|friends|members") String visibility,
+                          @Pattern(regexp="members|friends|nobody") String directMessages,
+                          @Pattern(regexp="friends|private") String presenceVisibility) {}
     public record Code(@NotBlank @Pattern(regexp="[0-9]{6}") String code) {}
     public record Ticket(@NotBlank @Size(min=3,max=120) String subject, @NotBlank @Size(min=10,max=2000) String message) {}
     private record Enrollment(String secret, Instant expires, int attempts) {}
@@ -55,7 +57,7 @@ public class SettingsApiController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of(
             "profile", Map.of("id", user.getId(), "name", user.getFullName(), "nickname", user.getNickname() == null ? "" : user.getNickname(), "email", user.getEmail(), "hasPhoto", user.isHasPhoto(), "admin", user.getRole() == Role.ADMIN),
             "appearance", new Appearance(user.getTheme(), user.getFontSize(), user.getLanguage()),
-            "privacy", Map.of("visibility", user.getProfileVisibility()),
+            "privacy", new Privacy(user.getProfileVisibility(), user.getDirectMessages(), user.getPresenceVisibility()),
             "security", Map.of("twoFactorEnabled", user.isTwoFactorEnabled()),
             "sessions", sessions.list(auth.getName(), session.getId()), "version", version,
             "support", support.findTop20ByOwnerIdOrderByCreatedAtDesc(user.getId()).stream().map(this::ticketView).toList()));
@@ -81,8 +83,12 @@ public class SettingsApiController {
         sessions.revokeOthers(auth.getName(), session.getId()); return Map.of("saved", true);
     }
     @PutMapping("/privacy")
-    public Map<String, Boolean> privacy(Authentication auth, @Valid @RequestBody Visibility input) {
-        settings.visibility(auth.getName(), input.visibility()); return Map.of("saved", true);
+    public Map<String, Boolean> privacy(Authentication auth, @Valid @RequestBody Privacy input) {
+        if (input.visibility() == null && input.directMessages() == null && input.presenceVisibility() == null) {
+            throw new IllegalArgumentException("settings.error.validation");
+        }
+        settings.privacy(auth.getName(), input.visibility(), input.directMessages(), input.presenceVisibility());
+        return Map.of("saved", true);
     }
     @PostMapping(value="/photo", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, Boolean> photo(Authentication auth, @RequestParam MultipartFile photo) {

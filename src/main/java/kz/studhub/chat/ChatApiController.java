@@ -67,9 +67,6 @@ public class ChatApiController {
     @PostMapping("/rooms/{id}/read") public ResponseEntity<?> read(Principal user, @PathVariable String id, @Valid @RequestBody Read request) { chat.read(user.getName(),id,request.messageId()); return ok(Map.of("saved",true)); }
     @PostMapping("/rooms/{id}/members") public ResponseEntity<?> add(Principal user, @PathVariable String id, @Valid @RequestBody Members request) { chat.addMembers(user.getName(),id,request.userIds()); return ok(Map.of("saved",true)); }
     @PostMapping("/rooms/{id}/leave") public ResponseEntity<?> leave(Principal user, @PathVariable String id) { chat.leave(user.getName(),id); return ok(Map.of("saved",true)); }
-    @ExceptionHandler(ChatService.Failure.class) public ResponseEntity<?> failure(ChatService.Failure error) {
-        return ResponseEntity.status(error.status).cacheControl(CacheControl.noStore()).body(Map.of("error",error.code));
-    }
     @ExceptionHandler({MethodArgumentNotValidException.class,HandlerMethodValidationException.class})
     public ResponseEntity<?> invalid(Exception error) { return ResponseEntity.badRequest().body(Map.of("error","VALIDATION")); }
 }

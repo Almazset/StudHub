@@ -352,6 +352,80 @@ class ChatIntegrationTest {
         mvc.perform(get("/api/chat/users").param("q","Chat Alice").with(user(bob.getEmail()))).andExpect(status().isOk())
             .andExpect(jsonPath("$[0].email").doesNotExist()).andExpect(jsonPath("$[0].password").doesNotExist());
     }
+    @Test void recipientRuleAppliesToExistingChatsAndEveryWayToSend() throws Exception {
+        var room = chat.direct(alice.getEmail(), bob.getId());
+        String path = "/api/chat/rooms/" + room.id() + "/messages";
+        var existing = chat.send(bob.getEmail(), room.id(), "Older message", UUID.randomUUID());
+        var outgoing = Map.of("text", "New message", "clientId", UUID.randomUUID());
+
+        bob.setDirectMessages("friends");
+        users.saveAndFlush(bob);
+        assertThat(action(post("/api/chat/direct"), alice, Map.of("userId", bob.getId()), 403)
+            .path("error").asText()).isEqualTo("DIRECT_UNAVAILABLE");
+        assertThat(action(post(path), alice, outgoing, 403).path("error").asText()).isEqualTo("DIRECT_UNAVAILABLE");
+
+        long requestId = action(post("/api/friends"), alice, Map.of("userId", bob.getId()), 200).path("id").asLong();
+        action(post("/api/friends/" + requestId + "/accept"), bob, null, 200);
+        action(post(path), alice, outgoing, 200);
+
+        bob = users.findById(bob.getId()).orElseThrow();
+        bob.setDirectMessages("nobody");
+        users.saveAndFlush(bob);
+        mvc.perform(get("/api/chat/rooms/" + room.id()).with(user(alice.getEmail())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.room.canSend").value(false));
+        assertThat(action(post(path), alice, Map.of("text", "Denied", "clientId", UUID.randomUUID()), 403)
+            .path("error").asText()).isEqualTo("DIRECT_UNAVAILABLE");
+        var meta = new MockMultipartFile("message", "", "application/json", json.writeValueAsBytes(outgoing));
+        var file = new MockMultipartFile("file", "lecture.png", "image/png", ChatFileValidatorTest.image("png"));
+        mvc.perform(multipart(path).file(meta).file(file).with(user(alice.getEmail())).with(csrf()))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("DIRECT_UNAVAILABLE"));
+        action(post(path + "/" + existing.id() + "/forward"), alice,
+            Map.of("roomId", room.id(), "clientId", UUID.randomUUID()), 403);
+
+        // Closing incoming messages for Bob keeps Bob's ability to write to Alice.
+        action(post(path), bob, outgoing, 200);
+        assertThat(chat.history(alice.getEmail(), room.id(), null, null).messages())
+            .extracting(ChatService.Message::text).containsExactly("Older message", "New message", "New message");
+    }
+
+    @Test void blockingClosesBothDirectionsAndConcealsDirectoryResults() throws Exception {
+        var direct = chat.direct(alice.getEmail(), bob.getId());
+        var group = chat.group(alice.getEmail(), "Joint study", Set.of(bob.getId(), eve.getId()));
+        var earlier = chat.send(bob.getEmail(), direct.id(), "Existing history", UUID.randomUUID());
+
+        var shId = "SH-" + bob.getId();
+        var visible = action(get("/api/chat/users").param("q", shId), alice, null, 200).get(0);
+        assertThat(visible.propertyStream().map(Map.Entry::getKey)).containsExactlyInAnyOrder("id", "name");
+        action(put("/api/friends/blocked/" + alice.getId()), bob, null, 204);
+        for (var actor : List.of(alice, bob)) {
+            var peer = actor.equals(alice) ? bob : alice;
+            String path = "/api/chat/rooms/" + direct.id() + "/messages";
+            var hidden = action(get("/api/chat/users").param("q", "SH-" + peer.getId()), actor, null, 200);
+            var unknown = action(get("/api/chat/users").param("q", "SH-" + Long.MAX_VALUE), actor, null, 200);
+            assertThat(hidden).isEqualTo(unknown);
+            assertThat(action(get("/api/chat/users").param("q", peer.getFullName()), actor, null, 200))
+                .noneMatch(result -> result.path("id").asLong() == peer.getId());
+            assertThat(action(post("/api/chat/direct"), actor, Map.of("userId", peer.getId()), 403)
+                .path("error").asText()).isEqualTo("DIRECT_UNAVAILABLE");
+            action(post(path), actor, Map.of("text", "Denied", "clientId", UUID.randomUUID()), 403);
+            action(put(path + "/" + earlier.id() + "/reaction"), actor, Map.of("emoji", "👍"), 403);
+            mvc.perform(get("/api/chat/rooms/" + direct.id()).with(user(actor.getEmail())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.room.canSend").value(false))
+                .andExpect(jsonPath("$.room.peerId").value(peer.getId()))
+                .andExpect(jsonPath("$.room.name").doesNotExist());
+        }
+        assertThat(chat.history(alice.getEmail(), direct.id(), null, null).messages())
+            .extracting(ChatService.Message::text).containsExactly("Existing history");
+
+        chat.send(alice.getEmail(), group.id(), "Group conversation", UUID.randomUUID());
+        assertThat(chat.history(bob.getEmail(), group.id(), null, null).messages()).hasSize(1);
+        assertThat(notificationTypes(bob)).doesNotContain("CHAT_MESSAGE");
+        assertThat(notificationTypes(eve)).containsExactly("CHAT_MESSAGE");
+
+        action(delete("/api/friends/blocked/" + alice.getId()), bob, null, 204);
+        assertThat(chat.detail(alice.getEmail(), direct.id()).room().canSend()).isTrue();
+    }
+
     @Test void concurrentDirectCreationAndRetryProduceOneRoomAndOneMessage() throws Exception {
         try(var executor=Executors.newFixedThreadPool(4)) {
             var start=new CountDownLatch(1);

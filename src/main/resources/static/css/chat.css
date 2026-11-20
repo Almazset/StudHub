@@ -144,3 +144,16 @@
 .chat-attachment i { grid-row:span 2; }
 .chat-attachment small { grid-column:2; color:var(--muted); }
 .chat-attachment:hover strong { text-decoration:underline; }
+
+/* Contact safety actions use the same dialog and controls as chat. */
+.contact-safety-title { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
+#contact-safety-dialog p { overflow-wrap: anywhere; }
+#contact-safety-dialog select, #contact-safety-dialog textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+#contact-safety-dialog .form-actions { flex-wrap: wrap; }

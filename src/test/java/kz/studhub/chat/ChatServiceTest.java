@@ -1,6 +1,7 @@
 package kz.studhub.chat;
 
 import java.util.*;
+import kz.studhub.friends.ContactPrivacyService;
 import kz.studhub.model.UserAccount;
 import kz.studhub.notification.NotificationService;
 import kz.studhub.repository.UserAccountRepository;
@@ -13,7 +14,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import static org.assertj.core.api.Assertions.*;
 
 @DataJpaTest(showSql=false,properties={"spring.datasource.url=jdbc:h2:mem:chat;MODE=PostgreSQL;DB_CLOSE_DELAY=-1","spring.jpa.hibernate.ddl-auto=create-drop","spring.jpa.show-sql=false"})
-@Import(ChatService.class)
+@Import({ChatService.class, ContactPrivacyService.class})
 class ChatServiceTest {
     @Autowired ChatService chat;
     @MockitoBean NotificationService notifications;

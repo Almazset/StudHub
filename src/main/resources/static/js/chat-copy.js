@@ -1,6 +1,10 @@
 (() => {
   'use strict';
   const copy = {
+    DIRECT_UNAVAILABLE: ['Отправка личных сообщений недоступна.', 'Direct messaging is unavailable.', 'Жеке хабарлама жіберу қолжетімсіз.'],
+    anonymousMember: ['Участник', 'Member', 'Қатысушы'],
+    emptyHistory: ['Сообщений пока нет', 'No messages yet', 'Әзірге хабарлама жоқ'],
+    noForwardDestinations: ['Нет доступных чатов для пересылки.', 'No conversations available to forward to.', 'Қайта жіберуге болатын чат жоқ.'],
     title:['Чат','Chat','Чат'], subtitle:['Обсуждайте учёбу и делитесь полезным.','Study together. Share what helps.','Бірге оқып, пайдалы ақпаратпен бөлісіңіз.'],
     newChat:['Новый чат','New chat','Жаңа чат'], all:['Все','All','Барлығы'], direct:['Личные','Direct','Жеке'], groups:['Группы','Groups','Топтар'],
     global:['Общий чат StudHub','StudHub community','StudHub ортақ чаты'], globalHint:['Видят все пользователи StudHub','Visible to all StudHub users','Барлық StudHub пайдаланушысына көрінеді'],

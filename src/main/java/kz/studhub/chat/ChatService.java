@@ -3,6 +3,8 @@ package kz.studhub.chat;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import kz.studhub.friends.ContactPrivacyService;
+import kz.studhub.friends.ContactPrivacyService.Audience;
 import kz.studhub.model.UserAccount;
 import kz.studhub.notification.NotificationService;
 import kz.studhub.notification.NotificationType;
@@ -24,13 +26,14 @@ public class ChatService {
     public record Message(Long id, Person sender, String text, Instant createdAt, String clientId, Instant editedAt,
                           Quote reply, boolean forwarded, boolean pinned, boolean favorite, List<Reaction> reactions, Attachment attachment) {}
     public record Room(String id, String kind, String name, Long peerId, Long ownerId, int memberCount,
-                       long unread, Message lastMessage, Instant updatedAt) {}
+                       long unread, Message lastMessage, Instant updatedAt, boolean canSend) {}
     public record RoomList(Long meId, List<Room> rooms) {}
     public record Detail(Room room, List<Person> members, boolean canPin) {}
     public record History(List<Message> messages, boolean hasMore) {}
     public static class Failure extends RuntimeException {
         final HttpStatus status; final String code;
         Failure(HttpStatus status, String code) { super(code); this.status = status; this.code = code; }
+        public HttpStatus status() { return status; }
     }
     private final ChatRoomRepository rooms;
     private final ChatMemberRepository members;
@@ -38,10 +41,12 @@ public class ChatService {
     private final UserAccountRepository users;
     private final ChatAttachmentRepository attachments;
     private final NotificationService notifications;
+    private final ContactPrivacyService privacy;
     public ChatService(ChatRoomRepository rooms, ChatMemberRepository members, ChatMessageRepository messages,
-                       UserAccountRepository users, ChatAttachmentRepository attachments, NotificationService notifications) {
+                       UserAccountRepository users, ChatAttachmentRepository attachments, NotificationService notifications,
+                       ContactPrivacyService privacy) {
         this.rooms = rooms; this.members = members; this.messages = messages; this.users = users;
-        this.attachments = attachments; this.notifications = notifications;
+        this.attachments = attachments; this.notifications = notifications; this.privacy = privacy;
     }
     private Failure fail(HttpStatus status, String code) { return new Failure(status, code); }
     private UserAccount me(String email) { return users.findByEmailIgnoreCase(email).orElseThrow(() -> fail(HttpStatus.UNAUTHORIZED,"LOGIN")); }
@@ -51,9 +56,36 @@ public class ChatService {
         if (!room.kind.equals("GLOBAL") && !members.existsByRoomIdAndUserId(id,userId)) throw fail(HttpStatus.NOT_FOUND,"NOT_FOUND");
         return room;
     }
-    private Person person(Long id, Map<Long,ChatIdentity> accounts, Long viewer) {
+    private Person person(Long id, Map<Long,ChatIdentity> accounts, Audience audience) {
         ChatIdentity user = accounts.get(id);
-        return new Person(id, user != null && (id.equals(viewer) || "members".equals(user.getProfileVisibility())) ? displayName(user) : null);
+        return new Person(id, user != null && audience.canViewProfile(id,user.getProfileVisibility()) ? displayName(user) : null);
+    }
+    private Long directPeer(ChatRoom room, List<ChatMember> participants, Long viewer) {
+        return room.kind.equals("DIRECT") ? participants.stream().map(member -> member.userId)
+            .filter(id -> !id.equals(viewer)).findFirst().orElse(null) : null;
+    }
+    private boolean canSend(ChatRoom room, Long peer, Map<Long,ChatIdentity> accounts, Audience audience) {
+        if (!room.kind.equals("DIRECT")) return true;
+        ChatIdentity target = peer == null ? null : accounts.get(peer);
+        return target != null && audience.canSendDirect(peer,target.getDirectMessages());
+    }
+    private Failure directUnavailable() {
+        return fail(HttpStatus.FORBIDDEN,"DIRECT_UNAVAILABLE");
+    }
+    private void lockDirectPair(Long first, Long second) {
+        users.findLockedById(Math.min(first,second)).orElseThrow(this::directUnavailable);
+        users.findLockedById(Math.max(first,second)).orElseThrow(this::directUnavailable);
+    }
+    // Lock users before rooms. The lower account lock is also used by block and friendship writes.
+    private void lockMessaging(ChatRoom room, Long viewer, boolean serializeSender) {
+        if (room.kind.equals("DIRECT")) {
+            Long peer = directPeer(room,members.findByRoomIdOrderByUserId(room.id),viewer);
+            if (peer == null) throw directUnavailable();
+            lockDirectPair(viewer,peer);
+            if (!privacy.canSendDirect(viewer,peer)) throw directUnavailable();
+        } else if (serializeSender) {
+            users.findLockedById(viewer).orElseThrow(() -> fail(HttpStatus.UNAUTHORIZED,"LOGIN"));
+        }
     }
     private String displayName(ChatIdentity user) { return user.getNickname() == null || user.getNickname().isBlank() ? user.getFullName() : user.getNickname(); }
     private Map<Long,ChatIdentity> accounts(Collection<Long> ids) {
@@ -65,7 +97,10 @@ public class ChatService {
             a -> new Attachment(a.getName(), a.getMediaType(), a.getSize())));
     }
     private List<Message> views(List<ChatMessage> rows, Long viewer) {
-        if (rows.isEmpty()) return List.of();
+        return rows.isEmpty() ? List.of() : views(rows, privacy.audience(viewer));
+    }
+    private List<Message> views(List<ChatMessage> rows, Audience audience) {
+        Long viewer = audience.viewer();
         var originals = messages.findAllById(rows.stream().map(m -> m.replyToId).filter(Objects::nonNull).toList())
             .stream().collect(Collectors.toMap(m -> m.id,m -> m));
         var ids = new HashSet<Long>(); rows.forEach(m -> ids.add(m.senderId)); originals.values().forEach(m -> ids.add(m.senderId));
@@ -76,11 +111,11 @@ public class ChatService {
         return rows.stream().map(m -> {
             var original = originals.get(m.replyToId);
             Quote quote = m.replyToId == null ? null : original != null && original.roomId.equals(m.roomId)
-                ? new Quote(original.id,person(original.senderId,accounts,viewer),previewText(original, files.get(original.id)))
+                ? new Quote(original.id,person(original.senderId,accounts,audience),previewText(original, files.get(original.id)))
                 : new Quote(m.replyToId,null,null);
             var counts = m.reactions.values().stream().collect(Collectors.groupingBy(e -> e,TreeMap::new,Collectors.counting()));
             var reactions = counts.entrySet().stream().map(e -> new Reaction(e.getKey(),e.getValue(),e.getKey().equals(m.reactions.get(viewer)))).toList();
-            return new Message(m.id,person(m.senderId,accounts,viewer),m.text,m.createdAt,m.clientId,m.editedAt,
+            return new Message(m.id,person(m.senderId,accounts,audience),m.text,m.createdAt,m.clientId,m.editedAt,
                 quote,m.forwarded,m.pinned,m.favorites.contains(viewer),reactions,files.get(m.id));
         }).toList();
     }
@@ -89,13 +124,18 @@ public class ChatService {
     }
     private Room view(ChatRoom room, Long viewer) {
         var participants = members.findByRoomIdOrderByUserId(room.id);
-        Long peerId = room.kind.equals("DIRECT") ? participants.stream().map(m -> m.userId).filter(id -> !id.equals(viewer)).findFirst().orElse(null) : null;
-        String name = peerId == null ? room.name : person(peerId,accounts(List.of(peerId)),viewer).name();
+        var peer = directPeer(room,participants,viewer);
+        return view(room,participants,accounts(peer == null ? List.of() : List.of(peer)),privacy.audience(viewer));
+    }
+    private Room view(ChatRoom room, List<ChatMember> participants, Map<Long,ChatIdentity> accounts, Audience audience) {
+        Long viewer = audience.viewer();
+        Long peerId = directPeer(room,participants,viewer);
+        String name = peerId == null ? room.name : person(peerId,accounts,audience).name();
         long read = participants.stream().filter(m -> m.userId.equals(viewer)).mapToLong(m -> m.lastRead).findFirst().orElse(0);
         var last = messages.findFirstByRoomIdOrderByIdDesc(room.id);
         return new Room(room.id,room.kind,name,peerId,room.ownerId,room.kind.equals("GLOBAL") ? 0 : participants.size(),
             messages.countByRoomIdAndIdGreaterThanAndSenderIdNot(room.id,read,viewer),
-            last.map(m -> views(List.of(m),viewer).getFirst()).orElse(null),room.updatedAt);
+            last.map(m -> views(List.of(m),audience).getFirst()).orElse(null),room.updatedAt,canSend(room,peerId,accounts,audience));
     }
     @Transactional(readOnly = true)
     public RoomList list(String email) {
@@ -109,59 +149,77 @@ public class ChatService {
         var userIds = new HashSet<Long>(); people.values().forEach(list -> list.forEach(m -> userIds.add(m.userId))); latest.values().forEach(m -> userIds.add(m.senderId));
         var accounts = accounts(userIds);
         var files = attachmentMetadata(latest.values().stream().map(m -> m.id).toList());
+        var audience = privacy.audience(viewer);
         return new RoomList(viewer,visible.stream().map(room -> {
             var participants = people.getOrDefault(room.id,List.of());
-            Long peerId = room.kind.equals("DIRECT") ? participants.stream().map(m -> m.userId).filter(uid -> !uid.equals(viewer)).findFirst().orElse(null) : null;
-            String name = peerId == null ? room.name : person(peerId,accounts,viewer).name();
+            Long peerId = directPeer(room,participants,viewer);
+            String name = peerId == null ? room.name : person(peerId,accounts,audience).name();
             ChatMessage last = latest.get(room.id);
             return new Room(room.id,room.kind,name,peerId,room.ownerId,room.kind.equals("GLOBAL") ? 0 : participants.size(),unread.getOrDefault(room.id,0L),
-                last == null ? null : new Message(last.id,person(last.senderId,accounts,viewer),last.text,last.createdAt,last.clientId,last.editedAt,
-                    null,last.forwarded,last.pinned,false,List.of(),files.get(last.id)),room.updatedAt);
+                last == null ? null : new Message(last.id,person(last.senderId,accounts,audience),last.text,last.createdAt,last.clientId,last.editedAt,
+                    null,last.forwarded,last.pinned,false,List.of(),files.get(last.id)),room.updatedAt,canSend(room,peerId,accounts,audience));
         }).toList());
     }
     @Transactional(readOnly = true)
     public List<Person> search(String email, String query) {
-        var viewer = me(email);
+        Long viewer = me(email).getId();
         String term = query.strip();
         if (term.regionMatches(true, 0, "SH-", 0, 3)) {
             String number = term.substring(3);
             if (!number.matches("[1-9][0-9]{0,18}")) return List.of();
             try {
                 Long id = Long.valueOf(number);
-                if (id.equals(viewer.getId())) return List.of();
+                if (id.equals(viewer)) return List.of();
+                var audience = privacy.audience(viewer);
                 return users.findChatIdentities(List.of(id)).stream()
-                    .filter(u -> "members".equals(u.getProfileVisibility()))
+                    .filter(u -> audience.canViewProfile(u.getId(),u.getProfileVisibility()))
                     .map(u -> new Person(u.getId(), displayName(u))).toList();
             } catch (NumberFormatException ex) { return List.of(); }
         }
-        return users.searchChatUsers("members",term,viewer.getId(),PageRequest.of(0,20))
+        var audience = privacy.audience(viewer);
+        // The viewer is already excluded by the query and is a safe placeholder for empty IN lists.
+        var blocked = audience.blockedPeers().isEmpty() ? Set.of(viewer) : audience.blockedPeers();
+        var friends = audience.friends().isEmpty() ? Set.of(viewer) : audience.friends();
+        return users.searchChatUsers(term,viewer,blocked,friends,PageRequest.of(0,20))
             .stream().map(u -> new Person(u.getId(),displayName(u))).toList();
     }
     @Transactional(readOnly = true)
     public Detail detail(String email, String id) {
-        Long viewer = me(email).getId(); var room = accessible(id,viewer,false);
-        var ids = room.kind.equals("GLOBAL") ? List.<Long>of() : members.findByRoomIdOrderByUserId(id).stream().map(m -> m.userId).toList();
+        var account = me(email);
+        Long viewer = account.getId();
+        var room = accessible(id,viewer,false);
+        var participants = members.findByRoomIdOrderByUserId(id);
+        var ids = room.kind.equals("GLOBAL") ? List.<Long>of() : participants.stream().map(m -> m.userId).toList();
         var accounts = accounts(ids);
-        return new Detail(view(room,viewer),ids.stream().map(uid -> person(uid,accounts,viewer)).toList(),
-            room.kind.equals("DIRECT") || viewer.equals(room.ownerId) || me(email).getRole()==kz.studhub.model.Role.ADMIN);
+        var audience = privacy.audience(viewer);
+        var roomView = view(room,participants,accounts,audience);
+        boolean canPin = room.kind.equals("DIRECT") ? roomView.canSend()
+            : viewer.equals(room.ownerId) || account.getRole() == kz.studhub.model.Role.ADMIN;
+        return new Detail(roomView,ids.stream().map(uid -> person(uid,accounts,audience)).toList(),canPin);
     }
     private void capacity(Long id) {
         if (members.countByUserId(id) >= 100) throw fail(HttpStatus.CONFLICT,"ROOM_LIMIT");
     }
     private void selectable(Collection<Long> ids, Long viewer) {
         var found = accounts(ids);
-        if (ids.stream().anyMatch(id -> id.equals(viewer) || !found.containsKey(id) || !"members".equals(found.get(id).getProfileVisibility())))
+        var audience = privacy.audience(viewer);
+        if (ids.stream().anyMatch(id -> id.equals(viewer) || !found.containsKey(id)
+            || !audience.canViewProfile(id,found.get(id).getProfileVisibility())))
             throw fail(HttpStatus.BAD_REQUEST,"MEMBER_UNAVAILABLE");
     }
     public Room direct(String email, Long peerId) {
         Long viewer = me(email).getId();
         if (viewer.equals(peerId)) throw fail(HttpStatus.BAD_REQUEST,"SELF_CHAT");
-        // Serialize creation of the same pair before checking its unique key.
-        users.findLockedById(Math.min(viewer,peerId)).orElseThrow(() -> fail(HttpStatus.BAD_REQUEST,"MEMBER_UNAVAILABLE"));
+        lockDirectPair(viewer,peerId);
+        var audience = privacy.audience(viewer);
+        var peer = accounts(List.of(peerId)).get(peerId);
+        if (peer == null || !audience.canSendDirect(peerId,peer.getDirectMessages())) throw directUnavailable();
         String key = Math.min(viewer,peerId) + ":" + Math.max(viewer,peerId);
         var existing = rooms.findByDirectKey(key);
         if (existing.isPresent()) return view(existing.get(),viewer);
-        selectable(List.of(peerId),viewer); capacity(viewer); capacity(peerId);
+        if (!audience.friends().contains(peerId) && !audience.canViewProfile(peerId,peer.getProfileVisibility()))
+            throw directUnavailable();
+        capacity(viewer); capacity(peerId);
         var room = new ChatRoom(UUID.randomUUID().toString(),"DIRECT","",null); room.directKey = key;
         rooms.save(room); members.save(new ChatMember(room.id,viewer)); members.save(new ChatMember(room.id,peerId));
         return view(room,viewer);
@@ -218,8 +276,8 @@ public class ChatService {
     }
 
     public Message send(String email, String id, String text, UUID clientId, Long replyToId, MultipartFile upload) {
-        Long viewer = lockedMe(email).getId();
-        accessible(id,viewer,false);
+        Long viewer = me(email).getId();
+        lockMessaging(accessible(id,viewer,false),viewer,true);
         var previous = messages.findByRoomIdAndSenderIdAndClientId(id,viewer,clientId.toString());
         if (previous.isPresent()) return views(List.of(previous.get()),viewer).getFirst();
         String body = text.strip();
@@ -253,9 +311,10 @@ public class ChatService {
 
     private void notifyRoomMembers(ChatRoom room, Long senderId) {
         if (room.kind.equals("GLOBAL")) return;
+        var blocked = privacy.blockedPeers(senderId);
         members.findByRoomIdOrderByUserId(room.id).stream()
             .map(member -> member.userId)
-            .filter(recipient -> !recipient.equals(senderId))
+            .filter(recipient -> !recipient.equals(senderId) && !blocked.contains(recipient))
             .forEach(recipient -> notifications.publish(recipient, NotificationType.CHAT_MESSAGE,
                 "room:" + room.id, "", "/chat?room=" + room.id));
     }
@@ -269,7 +328,9 @@ public class ChatService {
             .orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
     }
     public Message editMessage(String email, String id, Long messageId, String text) {
-        Long viewer=me(email).getId(); accessible(id,viewer,true);
+        Long viewer=me(email).getId();
+        lockMessaging(accessible(id,viewer,false),viewer,false);
+        accessible(id,viewer,true);
         var message=messages.findById(messageId).filter(m -> m.roomId.equals(id)).orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
         if(!message.senderId.equals(viewer)) throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
         String body=text.strip();if((body.isEmpty() && !attachments.existsById(messageId)) || body.length()>4000 || body.indexOf('\0')>=0) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
@@ -292,7 +353,9 @@ public class ChatService {
         return messages.findById(id).filter(m -> m.roomId.equals(room)).orElseThrow(() -> fail(HttpStatus.NOT_FOUND,"NOT_FOUND"));
     }
     public Message reaction(String email,String room,Long id,String emoji) {
-        Long viewer=me(email).getId(); accessible(room,viewer,true);
+        Long viewer=me(email).getId();
+        lockMessaging(accessible(room,viewer,false),viewer,false);
+        accessible(room,viewer,true);
         if (!Set.of("", "👍", "❤️", "😂", "🎉", "🤔", "👀").contains(emoji)) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
         var message=messageInRoom(room,id);
         if(emoji.isEmpty()) message.reactions.remove(viewer); else message.reactions.put(viewer,emoji);
@@ -304,14 +367,18 @@ public class ChatService {
         return views(List.of(message),viewer).getFirst();
     }
     public Message pin(String email,String roomId,Long id,boolean enabled) {
-        var user=me(email);var room=accessible(roomId,user.getId(),true);
+        var user=me(email);
+        lockMessaging(accessible(roomId,user.getId(),false),user.getId(),false);
+        var room=accessible(roomId,user.getId(),true);
         if(!room.kind.equals("DIRECT") && !user.getId().equals(room.ownerId) && user.getRole()!=kz.studhub.model.Role.ADMIN)
             throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
         var message=messageInRoom(roomId,id);message.pinned=enabled;
         return views(List.of(message),user.getId()).getFirst();
     }
     public Message forward(String email,String sourceRoom,Long id,String target,UUID clientId) {
-        Long viewer = lockedMe(email).getId();
+        Long viewer = me(email).getId();
+        if (!sourceRoom.equals(target)) accessible(sourceRoom,viewer,false);
+        lockMessaging(accessible(target,viewer,false),viewer,true);
         // Acquire the room locks in the same order when forwarding in either direction.
         ChatRoom destination;
         if (sourceRoom.compareTo(target) < 0) {
