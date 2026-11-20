@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, String> {
+    boolean existsByIdAndKindAndOwnerId(String id, String kind, Long ownerId);
     Optional<ChatRoom> findByDirectKey(String key);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from ChatRoom r where r.id = :id")

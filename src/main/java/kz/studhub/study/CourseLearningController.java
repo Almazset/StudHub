@@ -35,7 +35,7 @@ public class CourseLearningController {
  }
  @GetMapping("/{id}") @Transactional(readOnly=true)
  public Map<String,Object> read(@PathVariable Long courseId,@PathVariable Long id){internal(courseId);var l=lesson(courseId,id);return Map.of("id",l.id,"sectionTitle",l.sectionTitle,"sectionOrder",l.sectionOrder,"lessonOrder",l.lessonOrder,"title",l.title,"content",l.content);}
- private LessonProgress mark(Principal p,CourseLesson l){Long uid=user(p);return progress.findByUserIdAndLessonId(uid,l.id).orElseGet(()->{var m=new LessonProgress();m.userId=uid;m.lesson=l;return m;});}
+ private LessonProgress mark(Principal p,CourseLesson l){Long uid=users.findLockedByEmail(p.getName()).orElseThrow().getId();return progress.findByUserIdAndLessonId(uid,l.id).orElseGet(()->{var m=new LessonProgress();m.userId=uid;m.lesson=l;return m;});}
  @PostMapping("/{id}/visit") @Transactional
  public Map<String,Boolean> visit(Principal p,@PathVariable Long courseId,@PathVariable Long id){lock(courseId);var m=mark(p,lesson(courseId,id));m.lastViewedAt=Instant.now();progress.save(m);return Map.of("saved",true);}
  @PutMapping("/{id}/progress") @Transactional

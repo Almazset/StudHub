@@ -6,6 +6,7 @@
 <div class="app-main"><th:block th:replace="~{fragments :: topbar(#{page.courses})}"></th:block>
 <main id="main-content" class="content container-fluid page-content">
   <section class="page-intro"><div><p class="eyebrow" th:text="#{page.courses}">Курсы</p><h2><span th:text="#{courses.title}">Мои курсы</span><span class="count-badge" th:text="${#lists.size(courses)}">0</span></h2><p class="muted-copy" th:text="#{courses.subtitle}">Соберите учебные предметы в одном месте.</p></div><a class="btn btn-primary desktop-create" th:if="${canManageCourses}" th:href="@{/courses/new}"><i class="bi bi-plus-lg"></i><span th:text="#{action.newCourse}">Новый курс</span></a></section>
+  <div class="alert alert-danger" role="alert" th:if="${courseDeleteError}" th:text="${courseDeleteError}"></div>
   <section class="surface list-surface">
     <div class="list-toolbar course-toolbar">
       <label class="search-box"><i class="bi bi-search"></i><span class="visually-hidden" th:text="#{action.search}">Поиск</span><input type="search" data-course-search th:placeholder="#{courses.search}"></label>

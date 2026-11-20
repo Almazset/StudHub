@@ -23,22 +23,33 @@ public class AssignmentService {
             throw new org.springframework.security.access.AccessDeniedException("Требуется вход");
         return users.findByEmailIgnoreCase(auth.getName()).orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Аккаунт не найден"));
     }
+    private kz.studhub.model.Course lockCourse(Long id) {
+        return id == null ? null : courses.findLockedById(id).orElseThrow(() -> new ResourceNotFoundException("Курс не найден: " + id));
+    }
+    private kz.studhub.model.UserAccount lockedOwner() {
+        var owner = currentOwner();
+        return users.findLockedById(owner.getId()).orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Аккаунт не найден"));
+    }
     @Transactional(readOnly = true) public List<Assignment> findAll() { return assignments.findByStudentId(currentOwner().getId()); }
     @Transactional(readOnly = true) public Assignment findById(Long id) { return assignments.findByIdAndStudentId(id, currentOwner().getId()).orElseThrow(() -> new ResourceNotFoundException("Задание не найдено: " + id)); }
     public Assignment save(Assignment form, Long courseId) {
+        var course = lockCourse(courseId);
+        var owner = lockedOwner();
         Assignment assignment = new Assignment();
-        assignment.setStudent(currentOwner());
+        assignment.setStudent(owner);
         assignment.setTitle(form.getTitle()); assignment.setDescription(form.getDescription());
         assignment.setDueDate(form.getDueDate()); assignment.setStatus(form.getStatus());
         assignment.setPriority(form.getPriority());
-        assignment.setCourse(courseId == null ? null : courses.findById(courseId).orElseThrow(() -> new ResourceNotFoundException("Курс не найден: " + courseId)));
+        assignment.setCourse(course);
         return assignments.save(assignment);
     }
     public Assignment update(Long id, Assignment form, Long courseId) {
+        var course = lockCourse(courseId);
+        lockedOwner();
         Assignment a = findById(id);
         a.setTitle(form.getTitle()); a.setDescription(form.getDescription()); a.setDueDate(form.getDueDate()); a.setStatus(form.getStatus());
         a.setPriority(form.getPriority());
-        a.setCourse(courseId == null ? null : courses.findById(courseId).orElseThrow(() -> new ResourceNotFoundException("Курс не найден: " + courseId)));
+        a.setCourse(course);
         return assignments.save(a);
     }
     public void toggleCompleted(Long id) {

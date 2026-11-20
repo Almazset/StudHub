@@ -1,5 +1,7 @@
 package kz.studhub.repository;
 import kz.studhub.model.UserAccount;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -22,6 +24,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from UserAccount u where u.id = :id")
     Optional<UserAccount> findLockedById(@Param("id") Long id);
+    @Query(value = "select id from users where id in (:ids) order by id for update", nativeQuery = true)
+    List<Long> lockExistingIds(@Param("ids") Collection<Long> ids);
     interface ChatIdentity {
         Long getId();
         String getFullName();

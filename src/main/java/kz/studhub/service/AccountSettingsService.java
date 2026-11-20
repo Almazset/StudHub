@@ -13,6 +13,7 @@ public class AccountSettingsService {
     private final PasswordEncoder encoder;
     public AccountSettingsService(UserAccountRepository users, PasswordEncoder encoder) { this.users = users; this.encoder = encoder; }
     public UserAccount account(String email) { return users.findByEmailIgnoreCase(email).orElseThrow(() -> new ResourceNotFoundException("Account not found")); }
+    public UserAccount lockedAccount(String email) { return users.findLockedByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Account not found")); }
     public void checkPassword(String email, String password) {
         if (password == null || !encoder.matches(password, account(email).getPassword())) throw new IllegalArgumentException("settings.error.password");
     }

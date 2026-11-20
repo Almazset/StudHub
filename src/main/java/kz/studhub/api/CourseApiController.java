@@ -11,6 +11,11 @@ import java.util.List;
 public class CourseApiController {
     private final CourseService service;
     public CourseApiController(CourseService service) { this.service = service; }
+    @ExceptionHandler(kz.studhub.service.CourseInUseException.class)
+    public org.springframework.http.ResponseEntity<java.util.Map<String,String>> inUse(kz.studhub.service.CourseInUseException error) {
+        return org.springframework.http.ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+            .cacheControl(org.springframework.http.CacheControl.noStore()).body(java.util.Map.of("error", error.getMessage()));
+    }
     @GetMapping public List<Course> all() { return service.findAll(); }
     @GetMapping("/{id}") public Course one(@PathVariable Long id) { return service.findById(id); }
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")

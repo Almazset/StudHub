@@ -56,5 +56,16 @@ public class CoursePageController {
         service.update(id, course); return "redirect:/courses?saved";
     }
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/{id}/delete") public String delete(@PathVariable Long id) { service.delete(id); return "redirect:/courses?deleted"; }
+    @PostMapping("/{id}/delete")
+    public String delete(@PathVariable Long id, Model model, jakarta.servlet.http.HttpServletResponse response) {
+        try {
+            service.delete(id);
+            return "redirect:/courses?deleted";
+        } catch (kz.studhub.service.CourseInUseException error) {
+            response.setStatus(org.springframework.http.HttpStatus.CONFLICT.value());
+            model.addAttribute("courseDeleteError", error.getMessage());
+            model.addAttribute("courses", service.findAll());
+            return "courses";
+        }
+    }
 }

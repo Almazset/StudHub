@@ -21,7 +21,8 @@ public class StudyProgressController {
  private Map<String,Object> view(StudyStep s){return Map.of("id",s.id,"title",s.title,"completed",s.completed);}
  @GetMapping @Transactional(readOnly=true) public List<Map<String,Object>> list(Principal p,@PathVariable Long courseId){course(courseId);return steps.findByUserIdAndCourseIdOrderByIdAsc(user(p),courseId).stream().map(this::view).toList();}
  @PostMapping @Transactional public Map<String,Object> create(Principal p,@PathVariable Long courseId,@Valid @RequestBody Create input){
-  Long id=users.findLockedByEmail(p.getName()).orElseThrow().getId();course(courseId);String title=input.title().strip();
+  courses.findLockedById(courseId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
+  Long id=users.findLockedByEmail(p.getName()).orElseThrow().getId();String title=input.title().strip();
   if(title.isEmpty())throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
   if(steps.countByUserIdAndCourseId(id,courseId)>=100)throw new ResponseStatusException(HttpStatus.CONFLICT,"Не более 100 этапов на курс");
   return view(steps.saveAndFlush(new StudyStep(id,courseId,title)));

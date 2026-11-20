@@ -125,6 +125,7 @@ public class FriendController {
 
     private void lockPair(Long viewer, Long peer) {
         users.findLockedById(Math.min(viewer, peer)).orElseThrow(FriendController::notFound);
+        users.findLockedById(Math.max(viewer, peer)).orElseThrow(FriendController::notFound);
     }
 
     private FriendView view(Friendship friendship, Long viewer) {
