@@ -1,2 +1,65 @@
-<!doctype html><html lang="ru" xmlns:th="http://www.thymeleaf.org"><head><th:block th:replace="~{fragments :: head('Друзья')}"></th:block><link rel="stylesheet" th:href="@{/css/friends.css}"></head>
-<body class="app-shell" data-page="friends"><th:block th:replace="~{fragments :: skip}"></th:block><th:block th:replace="~{fragments :: sidebar}"></th:block><div class="drawer-backdrop" data-drawer-close></div><div class="app-main"><th:block th:replace="~{fragments :: topbar('Друзья')}"></th:block><main id="main-content" class="content container-fluid"><div class="friends-page" data-friends-root><header class="friends-heading"><div><p class="eyebrow">STUDHUB COMMUNITY</p><h1>Друзья</h1><p class="muted-copy">Находите друзей и оставайтесь на связи.</p></div></header><p role="alert" class="friends-error" hidden></p><section class="surface friends-presence"><label for="friendPresence">Мой статус<select id="friendPresence" data-my-presence disabled><option value="ONLINE">В сети</option><option value="AWAY">Отошёл</option><option value="BUSY">Не беспокоить</option><option value="INVISIBLE">Невидимый</option></select></label><p class="muted-copy">Статус видят только ваши друзья. «Невидимый» показывает «Не в сети». «Не беспокоить» — отметка для друзей, она не отключает уведомления. После закрытия или сворачивания сайта статус обновляется в течение 75 секунд.</p><p data-presence-feedback role="status"></p></section><section class="surface friends-search"><h2>Добавить друга</h2><p>Найдите участника по имени, никнейму или ID, например SH-123.</p><form data-friend-search><label class="visually-hidden" for="friendQuery">Имя, никнейм или ID</label><input id="friendQuery" name="query" required minlength="2" maxlength="80" placeholder="Имя, никнейм или SH-ID"><button type="submit" class="btn btn-primary">Найти</button></form><div data-friend-results aria-live="polite"></div></section><nav class="friends-tabs" aria-label="Разделы друзей"><button type="button" data-friend-tab="accepted" aria-pressed="true">Друзья <span data-count="accepted">0</span></button><button type="button" data-friend-tab="incoming" aria-pressed="false">Входящие <span data-count="incoming">0</span></button><button type="button" data-friend-tab="outgoing" aria-pressed="false">Отправленные <span data-count="outgoing">0</span></button></nav><div class="friends-filters"><label>Поиск в списке<input type="search" data-friends-filter placeholder="Имя или SH-ID" maxlength="80"></label><label><input type="checkbox" data-friends-online> Только в сети</label><button type="button" class="btn btn-light" data-friends-refresh>Обновить</button><span data-friends-sync role="status"></span></div><section class="surface friends-list" data-friends-list aria-live="polite"><p>Загрузка…</p></section></div></main><th:block th:replace="~{fragments :: footer}"></th:block></div><th:block th:replace="~{fragments :: toastRegion}"></th:block><th:block th:replace="~{fragments :: scripts}"></th:block><script th:src="@{/js/friends.js}" defer></script></body></html>
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments :: head('Друзья')}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/friends.css}">
+</head>
+<body class="app-shell" data-page="friends">
+<th:block th:replace="~{fragments :: skip}"></th:block>
+<th:block th:replace="~{fragments :: sidebar}"></th:block>
+<div class="drawer-backdrop" data-drawer-close></div>
+<div class="app-main">
+  <th:block th:replace="~{fragments :: topbar('Друзья')}"></th:block>
+  <main id="main-content" class="content container-fluid">
+    <div class="friends-page" data-friends-root>
+      <header class="friends-heading">
+        <h1 data-friends-copy="heading">Друзья</h1>
+        <p class="muted-copy" data-friends-copy="intro">Находите друзей и оставайтесь на связи.</p>
+      </header>
+      <p role="alert" class="friends-error" hidden></p>
+      <section class="surface friends-presence">
+        <label for="friendPresence">
+          <span data-friends-copy="myStatus">Мой статус</span>
+          <select id="friendPresence" data-my-presence aria-describedby="friendsPresenceHint" disabled>
+            <option value="ONLINE" data-friends-copy="ONLINE">В сети</option>
+            <option value="AWAY" data-friends-copy="AWAY">Отошёл</option>
+            <option value="BUSY" data-friends-copy="BUSY">Не беспокоить</option>
+            <option value="INVISIBLE" data-friends-copy="INVISIBLE">Невидимый</option>
+          </select>
+        </label>
+        <p id="friendsPresenceHint" class="muted-copy" data-friends-copy="statusHint">После закрытия последней вкладки статус может оставаться «В сети» до полутора минут.</p>
+        <p><a th:href="@{/settings#privacy}" data-friends-copy="privacy">Настройки приватности</a></p>
+        <p data-presence-feedback role="status"></p>
+      </section>
+      <section class="surface friends-search">
+        <h2 data-friends-copy="add">Добавить друга</h2>
+        <p data-friends-copy="findHint">Введите имя, никнейм или ID, например SH-123.</p>
+        <form data-friend-search>
+          <label class="visually-hidden" for="friendQuery" data-friends-copy="query">Имя, никнейм или SH-ID</label>
+          <input id="friendQuery" name="query" required minlength="2" maxlength="80" placeholder="Имя, никнейм или SH-ID" data-friends-placeholder="query">
+          <button type="submit" class="btn btn-primary" data-friends-copy="find">Найти</button>
+        </form>
+        <div data-friend-results aria-live="polite"></div>
+      </section>
+      <nav class="friends-tabs" aria-label="Разделы друзей">
+        <button type="button" data-friend-tab="accepted" aria-pressed="true"><span data-friends-copy="accepted">Друзья</span><span data-count="accepted">0</span></button>
+        <button type="button" data-friend-tab="incoming" aria-pressed="false"><span data-friends-copy="incoming">Входящие</span><span data-count="incoming">0</span></button>
+        <button type="button" data-friend-tab="outgoing" aria-pressed="false"><span data-friends-copy="outgoing">Отправленные</span><span data-count="outgoing">0</span></button>
+        <button type="button" data-friend-tab="blocked" aria-pressed="false" data-friends-copy="blocked">Заблокированные</button>
+      </nav>
+      <div class="friends-filters" data-friend-filters>
+        <label><span data-friends-copy="filter">Поиск в списке</span><input type="search" data-friends-filter maxlength="80" placeholder="Имя или SH-ID" data-friends-placeholder="filterPlaceholder"></label>
+        <label><input type="checkbox" data-friends-online><span data-friends-copy="onlyOnline">Только в сети</span></label>
+        <button type="button" class="btn btn-light" data-friends-refresh data-friends-copy="refresh">Обновить</button>
+      </div>
+      <section class="surface friends-list" data-friends-list aria-live="polite"><p data-friends-copy="loading">Загрузка…</p></section>
+      <p class="friends-sync" data-friends-sync role="status"></p>
+    </div>
+  </main>
+  <th:block th:replace="~{fragments :: footer}"></th:block>
+</div>
+<th:block th:replace="~{fragments :: toastRegion}"></th:block>
+<th:block th:replace="~{fragments :: scripts}"></th:block>
+<script th:src="@{/js/friends.js}" defer></script>
+</body>
+</html>

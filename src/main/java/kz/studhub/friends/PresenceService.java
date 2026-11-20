@@ -12,12 +12,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class PresenceService {
     static final Duration TIMEOUT=Duration.ofSeconds(75);
     private final PresencePreferenceRepository preferences;
+    private final ContactPrivacyService privacy;
     private final Clock clock;
     private final Map<Long,Instant> activity=new ConcurrentHashMap<>();
     private final AtomicLong nextCleanup=new AtomicLong();
     @Autowired
-    public PresenceService(PresencePreferenceRepository preferences) { this(preferences,Clock.systemUTC()); }
-    PresenceService(PresencePreferenceRepository preferences,Clock clock) { this.preferences=preferences;this.clock=clock; }
+    public PresenceService(PresencePreferenceRepository preferences, ContactPrivacyService privacy) {
+        this(preferences, privacy, Clock.systemUTC());
+    }
+    PresenceService(PresencePreferenceRepository preferences, ContactPrivacyService privacy, Clock clock) {
+        this.preferences = preferences;
+        this.privacy = privacy;
+        this.clock = clock;
+    }
 
     public void heartbeat(Long userId) {
         Instant now=clock.instant();activity.put(userId,now);
@@ -32,9 +39,10 @@ public class PresenceService {
         preferences.save(new PresencePreference(userId,status));
         heartbeat(userId);return status;
     }
-    // Only call with accepted friends. The API deliberately has no arbitrary-user status lookup.
     @Transactional(readOnly=true)
-    public Map<Long,String> visibleStatuses(Collection<Long> ids) {
+    public Map<Long,String> visibleStatuses(Long viewer, Collection<Long> requested) {
+        Set<Long> ids = privacy.presencePeers(viewer, requested);
+        if (ids.isEmpty()) return Map.of();
         Map<Long,String> selected=new HashMap<>(),result=new HashMap<>();
         preferences.findAllById(ids).forEach(p -> selected.put(p.userId,p.status));
         Instant now=clock.instant();

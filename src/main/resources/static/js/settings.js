@@ -45,7 +45,7 @@
     return {
       profile:{id:user?.id || 1, name:currentName, nickname:saved.profile?.nickname || '', email:saved.profile?.email || user?.email || 'almaz@studhub.local', hasPhoto:Boolean(saved.photo), admin:false},
       appearance:saved.appearance || {theme:localStorage.getItem('studhub-theme') || 'light',fontSize:localStorage.getItem('studhub-font-size') || 'normal',language:i18n.language},
-      privacy:saved.privacy || {visibility:'private'}, security:{twoFactorEnabled:false}, sessions:[], support:saved.support || [], version:'0.0.1', photo:saved.photo || null
+      privacy:{visibility:'private',directMessages:'members',presenceVisibility:'friends',...saved.privacy}, security:{twoFactorEnabled:false}, sessions:[], support:saved.support || [], version:'0.0.1', photo:saved.photo || null
     };
   }
   function saveDemo() {
@@ -123,8 +123,21 @@
     const others = data.sessions.some(session => !session.current);
     return `<div class="settings-session-list">${data.sessions.map(session => `<article class="settings-session"><span class="settings-device-icon"><i class="bi bi-laptop"></i></span><div><strong>${esc(session.device)}</strong><small>${t('lastActive')}: ${formatDate(session.lastActive)}</small>${session.current ? `<span class="settings-current">${t('currentSession')}</span>` : ''}</div>${session.current ? '' : `<button type="button" class="btn btn-light" data-settings-action="revoke-session" data-reference="${esc(session.reference)}">${t('revoke')}</button>`}</article>`).join('')}</div>${others ? `<button class="btn btn-light" type="button" data-settings-action="revoke-others">${t('revokeOthers')}</button>` : `<p class="settings-hint">${t('noOtherSessions')}</p>`}`;
   }
+  function privacyChoice(id, key, title, fallback, options) {
+    const value = data.privacy[key] || fallback;
+    const items = Object.entries(options).map(([choice,label]) =>
+      `<option value="${choice}" ${value === choice ? 'selected' : ''}>${t(label)}</option>`).join('');
+    return `<label for="${id}" class="visually-hidden">${t(title)}</label><select id="${id}" data-privacy-setting="${key}">${items}</select>`;
+  }
   function privacyPage() {
-    return `${card('visibility','visibilityHint',`<label for="settingsVisibility" class="visually-hidden">${t('visibility')}</label><select id="settingsVisibility" data-settings-visibility><option value="private" ${data.privacy.visibility === 'private' ? 'selected' : ''}>${t('private')}</option><option value="members" ${data.privacy.visibility === 'members' ? 'selected' : ''}>${t('members')}</option></select>`)}${card('twoFactor','twoFactorHint',factorContent())}${card('sessions','sessionsHint',sessionList())}`;
+    const profile = privacyChoice('settingsVisibility','visibility','visibility','private',{private:'private',friends:'onlyFriends',members:'members'});
+    const messages = privacyChoice('settingsDirectMessages','directMessages','dmPrivacy','members',{members:'members',friends:'onlyFriends',nobody:'nobody'});
+    const status = privacyChoice('settingsPresenceVisibility','presenceVisibility','presencePrivacy','friends',{friends:'onlyFriends',private:'private'});
+    return card('visibility','visibilityHint',profile)
+      + card('dmPrivacy','dmPrivacyHint',messages)
+      + card('presencePrivacy','presencePrivacyHint',status)
+      + (preview ? '' : card('blockedUsers','blockedUsersHint',`<a class="btn btn-light" href="/friends?tab=blocked">${t('blockedUsersOpen')}</a>`))
+      + card('twoFactor','twoFactorHint',factorContent()) + card('sessions','sessionsHint',sessionList());
   }
   const formatDate = value => new Intl.DateTimeFormat(i18n.language,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
   function tickets(items, inbox = false) {
@@ -203,11 +216,21 @@
       }).then(() => notice(t('saved')),error => notice(errorText(error),true));
       return;
     }
-    if (event.target.matches('[data-settings-visibility]')) {
-      const previous = data.privacy.visibility;
-      data.privacy.visibility = event.target.value;
-      try { if (preview) saveDemo(); else await api('/privacy','PUT',data.privacy); notice(t('saved')); }
-      catch (error) { data.privacy.visibility = previous; event.target.value = previous; notice(errorText(error),true); }
+    if (event.target.matches('[data-privacy-setting]')) {
+      const control = event.target, key = control.dataset.privacySetting;
+      const previous = data.privacy[key];
+      control.disabled = true;
+      notice(t('saving'));
+      try {
+        if (!preview) await api('/privacy', 'PUT', {[key]:control.value});
+        data.privacy[key] = control.value;
+        if (preview) saveDemo();
+        notice(t('saved'));
+      } catch (error) {
+        control.value = previous;
+        notice(errorText(error), true);
+      } finally { control.disabled = false; }
+      return;
     }
     if (event.target.matches('[data-settings-photo]')) {
       const file = event.target.files[0];

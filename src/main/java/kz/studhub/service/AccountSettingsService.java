@@ -54,7 +54,12 @@ public class AccountSettingsService {
         user.setTheme(theme); user.setFontSize(fontSize); user.setLanguage(language); users.save(user);
     }
     @Transactional
-    public void visibility(String email, String value) { var user = users.findLockedByEmail(email).orElseThrow(); user.setProfileVisibility(value); users.save(user); }
+    public void privacy(String email, String visibility, String directMessages, String presenceVisibility) {
+        var user = users.findLockedByEmail(email).orElseThrow();
+        if (visibility != null) user.setProfileVisibility(visibility);
+        if (directMessages != null) user.setDirectMessages(directMessages);
+        if (presenceVisibility != null) user.setPresenceVisibility(presenceVisibility);
+    }
     @Transactional
     public void photo(String email, byte[] bytes) { var user = users.findLockedByEmail(email).orElseThrow(); user.setPhoto(bytes); users.save(user); }
 }

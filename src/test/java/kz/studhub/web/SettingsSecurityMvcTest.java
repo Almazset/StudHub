@@ -2,6 +2,7 @@ package kz.studhub.web;
 
 import kz.studhub.api.*;
 import kz.studhub.config.SecurityConfig;
+import kz.studhub.friends.ContactPrivacyService;
 import kz.studhub.model.*;
 import kz.studhub.repository.*;
 import kz.studhub.security.*;
@@ -30,6 +31,7 @@ class SettingsSecurityMvcTest {
     @Autowired PasswordEncoder encoder;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
     @MockitoBean AccountSettingsService settings;
+    @MockitoBean ContactPrivacyService privacy;
     @MockitoBean TwoFactorService twoFactor;
     @MockitoBean AccountSessions sessions;
     @MockitoBean ProfilePhotoService photos;
@@ -64,6 +66,7 @@ class SettingsSecurityMvcTest {
         when(users.findById(2L)).thenReturn(Optional.of(target));
         mvc.perform(get("/api/profiles/2").with(user(owner.getEmail()))).andExpect(status().isNotFound());
         target.setProfileVisibility("members");
+        when(privacy.canViewProfile(1L,target)).thenReturn(true);
         mvc.perform(get("/api/profiles/2").with(user(owner.getEmail()))).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Another Member")).andExpect(jsonPath("$.email").doesNotExist());
     }
     @Test void wrongSecondFactorPreventsPasswordChangeAndSupportInboxIsAdminOnly() throws Exception {

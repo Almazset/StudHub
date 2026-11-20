@@ -36,10 +36,9 @@ public class ProfilePageController {
                          Model model) {
         if (result.hasErrors()) return "profile";
 
-        UserAccount currentUser = users.findByEmailIgnoreCase(authentication.getName())
-                .orElseThrow(() -> new IllegalStateException("Authenticated account was not found"));
-        currentUser.setFullName(form.getFullName().trim());
-        users.save(currentUser);
+        if (users.updateFullName(authentication.getName(), form.getFullName().trim()) == 0) {
+            throw new IllegalStateException("Authenticated account was not found");
+        }
         return "redirect:/settings#profile";
     }
 

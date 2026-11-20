@@ -3,6 +3,7 @@ package kz.studhub.project;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.*;
+import kz.studhub.friends.ContactPrivacyService;
 import kz.studhub.notification.NotificationService;
 import kz.studhub.notification.NotificationType;
 import kz.studhub.repository.UserAccountRepository;
@@ -21,14 +22,17 @@ public class ProjectController {
     private final ProjectTaskRepository tasks;
     private final ProjectHistory history;
     private final NotificationService notifications;
+    private final ContactPrivacyService privacy;
     public ProjectController(ProjectRepository projects, UserAccountRepository users, kz.studhub.chat.ChatService chat,
-                             ProjectTaskRepository tasks, ProjectHistory history, NotificationService notifications) {
+                             ProjectTaskRepository tasks, ProjectHistory history, NotificationService notifications,
+                             ContactPrivacyService privacy) {
         this.history = history;
         this.projects = projects;
         this.users = users;
         this.chat = chat;
         this.tasks = tasks;
         this.notifications = notifications;
+        this.privacy = privacy;
     }
     @PostMapping("/{id}/chat") @Transactional
     public kz.studhub.chat.ChatService.Room openChat(Authentication auth, @PathVariable Long id) {
@@ -42,7 +46,13 @@ public class ProjectController {
     private Long userId(Authentication auth) { return users.findByEmailIgnoreCase(auth.getName()).orElseThrow().getId(); }
     private Map<String,Object> view(Project p, Long viewer) {
         var names = new HashMap<Long,String>();
-        users.findChatIdentities(p.memberIds).forEach(u -> names.put(u.getId(), u.getId().equals(viewer) || "members".equals(u.getProfileVisibility()) ? (u.getNickname() == null || u.getNickname().isBlank() ? u.getFullName() : u.getNickname()) : "Участник"));
+        var audience = privacy.audience(viewer);
+        users.findChatIdentities(p.memberIds).forEach(u -> {
+            if (audience.canViewProfile(u.getId(), u.getProfileVisibility())) {
+                String nickname = u.getNickname();
+                names.put(u.getId(), nickname == null || nickname.isBlank() ? u.getFullName() : nickname);
+            }
+        });
         return Map.of("closed",p.isClosed(),"pendingInvitations",p.ownerId.equals(viewer)?p.invitedIds.stream().sorted().toList():List.of(),"id",p.id,"title",p.title,"description",p.description,"owner",p.ownerId.equals(viewer),"ownerId",p.ownerId,"viewerId",viewer,"members",p.memberIds.stream().sorted().map(id -> Map.of("id",id,"name",names.getOrDefault(id,"Участник"))).toList());
     }
     public record Lifecycle(@NotNull Boolean closed) {}
@@ -58,12 +68,17 @@ public class ProjectController {
     }
     @GetMapping("/invitations") @Transactional(readOnly=true)
     public List<Map<String,Object>> invitations(Authentication auth) {
-        return projects.invitations(userId(auth)).stream().map(p -> Map.<String,Object>of("id",p.id,"title",p.title,"ownerId",p.ownerId,"closed",p.isClosed())).toList();
+        Long viewer = userId(auth);
+        var blocked = privacy.blockedPeers(viewer);
+        return projects.invitations(viewer).stream().filter(p -> !blocked.contains(p.ownerId))
+            .map(p -> Map.<String,Object>of("id",p.id,"title",p.title,"ownerId",p.ownerId,"closed",p.isClosed())).toList();
     }
     @PostMapping("/{id}/invitation/accept") @Transactional
     public Map<String,Object> accept(Authentication auth,@PathVariable Long id) {
         Long viewer=userId(auth);Project p=projects.locked(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
         if(!p.invitedIds.contains(viewer)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        users.findLockedById(Math.min(viewer, p.ownerId)).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (privacy.isBlocked(viewer, p.ownerId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         p.requireOpen();
         if(p.memberIds.size()>=30) throw new ResponseStatusException(HttpStatus.CONFLICT,"Проект заполнен");
         p.invitedIds.remove(viewer);p.memberIds.add(viewer);
@@ -128,8 +143,9 @@ public class ProjectController {
         Long viewer=userId(auth); Project p=projects.locked(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if(!p.ownerId.equals(viewer)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         p.requireOpen();
-        var person=users.findById(input.userId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if(!person.getId().equals(viewer) && !"members".equals(person.getProfileVisibility())) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        users.findLockedById(Math.min(viewer, input.userId())).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        users.findById(input.userId()).filter(person -> privacy.canViewProfile(viewer, person))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if(p.memberIds.contains(input.userId()) || p.invitedIds.contains(input.userId())) return view(p,viewer);
         if(p.memberIds.size()+p.invitedIds.size()>=30) throw new ResponseStatusException(HttpStatus.CONFLICT,"Лимит участников и приглашений — 30");
         p.invitedIds.add(input.userId());

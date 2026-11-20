@@ -1,12 +1,13 @@
 (() => {
   'use strict';
   const t = key => window.StudHubChatCopy(key);
+  const safety = window.StudHubContactSafety;
   const preview = location.pathname.endsWith('studhub-preview.html');
   const node = (tag, cls, text) => { const el=document.createElement(tag); if(cls)el.className=cls; if(text!==undefined)el.textContent=text; return el; };
   const icon = name => { const el=node('i',`bi bi-${name}`); el.setAttribute('aria-hidden','true'); return el; };
   const button = (text, action, cls='chat-button') => { const el=node('button',cls,text); el.type='button'; if(action)el.addEventListener('click',action); return el; };
-  const personName = person => person?.name || `${t('member')}${person?.id ?? ''}`;
-  const roomName = room => room.kind==='GLOBAL' ? t('global') : room.name || `${t('member')}${room.peerId ?? ''}`;
+  const personName = person => person?.name || t('anonymousMember');
+  const roomName = room => room.kind==='GLOBAL' ? t('global') : room.name || t('anonymousMember');
   const time = value => new Intl.DateTimeFormat(window.StudHubI18n?.language || 'ru',{hour:'2-digit',minute:'2-digit'}).format(new Date(value));
   let root, life, timer, current=null, meId, rooms=[], detail, rows=[], older=false, opening=0, syncing=false, sending=false, filter='all', signature='';
   let editing=false, replying=null, browsing=false, networkError=false, resultSequence=0, renderPending=false;
@@ -19,6 +20,10 @@
     : `${(size / (1024 * 1024)).toLocaleString(window.StudHubI18n?.language || 'ru',{maximumFractionDigits:1})} ${t('megabytes')}`;
   let dialogSequence=0, dialogMode, selected=new Map(), searchTimer, dialogOpener, failedSend=null;
   const $ = selector => root?.querySelector(selector);
+  const canSend = () => detail?.room.canSend !== false;
+  function openUserActions(id, name, opener, messageId) {
+    safety.open({id, name}, {opener, messageId, onBlock: sync, fallbackFocus: () => $('[data-chat-messages]')});
+  }
   async function api(path,method='GET',payload) {
     const requestLife=life;
     if(preview) return window.StudHubChatDemo(path,method,payload);
@@ -82,6 +87,7 @@
     const box=$(inDialog?'[data-chat-dialog-error]':'[data-chat-error]');
     if(box){box.hidden=false;box.querySelector('span').textContent=t(error.message)===error.message?t('NETWORK'):t(error.message);}
     if(error.message==='NETWORK'){networkError=true;status('Нет соединения. Черновик сохранён; пробуем восстановить связь…');}
+    if(error.message==='DIRECT_UNAVAILABLE' && !inDialog) queueMicrotask(sync);
     if(error.message==='NOT_FOUND' && !inDialog){ rows=[]; renderMessages(); $('[data-chat-composer]').hidden=true; }
   }
   function status(text='') { const el=$('[data-chat-status]');if(el&&el.textContent!==text)el.textContent=text; }
@@ -100,13 +106,13 @@
     const quote=$('[data-chat-reply]');if(quote){quote.replaceChildren();quote.hidden=!replying;if(replying){quote.append(node('span','',`Ответ: ${replying.text.slice(0,160)}`),button('Отменить ответ',()=>{replying=null;saveDraft();updateComposer();}));}}
 
     const input=$('[data-chat-input]'); $('[data-chat-count]').textContent=`${input.value.length} / 4000`;
-    input.readOnly=sending;
+    input.readOnly=sending || !canSend();
     const picked = chosenFiles.get(current), fileBox = $('[data-chat-file-picked]');
-    $('[data-chat-attach]').disabled = sending || !current;
+    $('[data-chat-attach]').disabled = sending || !canSend() || !current;
     fileBox.hidden = !picked;
     $('[data-chat-file-name]').textContent = picked ? `${picked.name} · ${fileSize(picked.size)}` : '';
     $('[data-chat-file-remove]').disabled = sending;
-    $('[data-chat-send]').disabled=sending || (!input.value.trim() && !picked) || !current;
+    $('[data-chat-send]').disabled=sending || !canSend() || (!input.value.trim() && !picked) || !current;
     $('[data-chat-send]').textContent=t(sending?'sending':'send');
   }
   function updateLabels() {
@@ -139,7 +145,16 @@
     const room=detail.room;
     $('[data-chat-room-title]').textContent=roomName(room);
     $('[data-chat-room-subtitle]').textContent=room.kind==='GLOBAL'?t('globalHint'):room.kind==='DIRECT'?t('personal'):`${t('members')}: ${room.memberCount}`;
-    $('[data-chat-room-hint]').textContent=t(room.kind==='GLOBAL'?'globalHint':room.kind==='DIRECT'?'privateHint':'groupHint');
+    const hint = $('[data-chat-room-hint]');
+    const label = t(!canSend()?'DIRECT_UNAVAILABLE':room.kind==='GLOBAL'?'globalHint':room.kind==='DIRECT'?'privateHint':'groupHint');
+    if (hint.textContent !== label) hint.textContent = label;
+    $('[data-chat-composer]').hidden = !canSend();
+    const safetyButton = $('[data-chat-room-safety]');
+    safetyButton.hidden = preview || room.kind !== 'DIRECT' || !Number.isSafeInteger(room.peerId);
+    if (!safetyButton.hidden) {
+      safetyButton.setAttribute('aria-label', safety.t('safety'));
+      safetyButton.title = safety.t('safety');
+    }
     $('[data-chat-members]').hidden=room.kind==='GLOBAL';
   }
   function appendText(element,text) {
@@ -153,7 +168,7 @@
     const list=$('[data-chat-messages]');if(!list)return;
     if(editing||list.querySelector('.chat-message-actions[open]')){renderPending=true;return;}renderPending=false;
     list.replaceChildren();
-    if(!rows.length){const empty=node('div','chat-conversation-empty');empty.append(icon('chat-square-text'),node('h3','',t('start')),node('p','',t('startHint')));list.append(empty);}
+    if(!rows.length){const empty=node('div','chat-conversation-empty');empty.append(icon('chat-square-text'),node('h3','',t(canSend()?'start':'emptyHistory')));if(canSend())empty.append(node('p','',t('startHint')));list.append(empty);}
     let lastDate='';
     rows.forEach(message=>{
       const date=new Date(message.createdAt).toLocaleDateString(window.StudHubI18n?.language || 'ru',{day:'numeric',month:'long',year:'numeric'});
@@ -173,7 +188,7 @@
       if(message.forwarded)item.prepend(node('small','chat-message-note','Пересланное сообщение'));
       if(message.pinned)meta.append(node('small','chat-message-note','Закреплено'));
       if(message.reply){const quote=button(message.reply.text ? `${personName(message.reply.sender)}: ${message.reply.text.slice(0,180)}` : 'Сообщение удалено',()=>jumpTo(message.reply.id),'chat-quote');quote.disabled=!message.reply.text;body.before(quote);}
-      if(message.reactions?.length){const strip=node('div','chat-reactions');message.reactions.forEach(r=>{const b=button(`${r.emoji} ${r.count}`,()=>messageAction(message,'reaction',{emoji:r.mine?'':r.emoji}),'chat-reaction');b.setAttribute('aria-pressed',String(r.mine));b.setAttribute('aria-label',`${r.emoji}: ${r.count}. ${r.mine?'Убрать реакцию':'Добавить реакцию'}`);strip.append(b);});item.append(strip);}
+      if(message.reactions?.length){const strip=node('div','chat-reactions');message.reactions.forEach(r=>{const b=button(`${r.emoji} ${r.count}`,()=>messageAction(message,'reaction',{emoji:r.mine?'':r.emoji}),'chat-reaction');b.disabled=!canSend();b.setAttribute('aria-pressed',String(r.mine));b.setAttribute('aria-label',`${r.emoji}: ${r.count}. ${r.mine?'Убрать реакцию':'Добавить реакцию'}`);strip.append(b);});item.append(strip);}
       if(message.editedAt)meta.append(node('small','','изменено'));
       if(!preview){
         const menu=node('details','chat-message-actions'), toggle=node('summary','chat-message-toggle');
@@ -201,12 +216,17 @@
           });
         },'chat-action');
         const remove=button('Удалить',async()=>{menu.open=false;if(!confirm('Удалить сообщение для всех участников?'))return;const id=current;remove.disabled=true;try{await api(`/rooms/${id}/messages/${message.id}`,'DELETE');if(current===id){rows=rows.filter(m=>m.id!==message.id);renderMessages();await refreshList();}}catch(e){error(e);}finally{remove.disabled=false;}},'chat-action');
-        actions.append(button('Ответить',()=>{menu.open=false;replying={id:message.id,text:messagePreview(message)};saveDraft();updateComposer();$('[data-chat-input]').focus();},'chat-action'));
-        const reactions=node('div','chat-reactions');['👍','❤️','😂','🎉','🤔','👀'].forEach(emoji=>{const b=button(emoji,()=>{menu.open=false;messageAction(message,'reaction',{emoji:message.reactions?.some(r=>r.emoji===emoji&&r.mine)?'':emoji});},'chat-reaction');b.setAttribute('aria-label',`Реакция ${emoji}`);reactions.append(b);});actions.append(reactions);
+        if(canSend()) actions.append(button('Ответить',()=>{menu.open=false;replying={id:message.id,text:messagePreview(message)};saveDraft();updateComposer();$('[data-chat-input]').focus();},'chat-action'));
+        const reactions=node('div','chat-reactions');['👍','❤️','😂','🎉','🤔','👀'].forEach(emoji=>{const b=button(emoji,()=>{menu.open=false;messageAction(message,'reaction',{emoji:message.reactions?.some(r=>r.emoji===emoji&&r.mine)?'':emoji});},'chat-reaction');b.setAttribute('aria-label',`Реакция ${emoji}`);reactions.append(b);});if(canSend()) actions.append(reactions);
         actions.append(button('Переслать',()=>{menu.open=false;forwardDialog(message);},'chat-action'));
         actions.append(button(message.favorite?'Убрать из избранного':'В избранное',()=>{menu.open=false;messageAction(message,'favorite',{enabled:!message.favorite});},'chat-action'));
-        if(detail?.canPin)actions.append(button(message.pinned?'Открепить':'Закрепить',()=>{menu.open=false;messageAction(message,'pin',{enabled:!message.pinned});},'chat-action'));
-        if(own)actions.append(edit,remove);menu.append(toggle,actions);meta.append(menu);
+        if(canSend() && detail?.canPin)actions.append(button(message.pinned?'Открепить':'Закрепить',()=>{menu.open=false;messageAction(message,'pin',{enabled:!message.pinned});},'chat-action'));
+        if(own && canSend()) actions.append(edit);
+        if(own) actions.append(remove);
+        if(!own && Number.isSafeInteger(message.sender.id)) {
+          actions.append(button(safety.t('safety'),()=>{menu.open=false;openUserActions(message.sender.id,personName(message.sender),toggle,message.id);},'chat-action'));
+        }
+        menu.append(toggle,actions);meta.append(menu);
       }
       list.append(item);
     });
@@ -236,7 +256,9 @@
     const source=current,token=crypto.randomUUID();dialogOpener=document.activeElement;dialogSequence++;
     const modal=$('[data-chat-dialog]'),host=$('[data-chat-dialog-body]');$('[data-chat-dialog-title]').textContent='Переслать сообщение';$('[data-chat-dialog-error]').hidden=true;
     host.replaceChildren(node('p','','Выберите чат. Получатели увидят отдельную копию сообщения вместе с вложением, если оно есть.'));
-    rooms.filter(r=>r.id!==source).forEach(room=>{const b=button(roomName(room),async()=>{host.querySelectorAll('button').forEach(el=>el.disabled=true);
+    const destinations = rooms.filter(room => room.id !== source && room.canSend !== false);
+    if (!destinations.length) host.append(node('p','muted-copy',t('noForwardDestinations')));
+    destinations.forEach(room=>{const b=button(roomName(room),async()=>{host.querySelectorAll('button').forEach(el=>el.disabled=true);
       try{await api(`/rooms/${source}/messages/${message.id}/forward`,'POST',{roomId:room.id,clientId:token});closeDialog();status('Сообщение переслано');await refreshList();}
       catch(e){error(e,true);host.querySelectorAll('button').forEach(el=>el.disabled=false);}
     });host.append(b);});modal.showModal();
@@ -260,13 +282,13 @@
     editing=false;saveDraft();current=id;replying=drafts.get(id)?.reply||null;browsing=false;resultSequence++;$('[data-chat-input]').value=drafts.get(id)?.text || '';detail=null;rows=[];older=false;const version=++opening;clearError();
     root.classList.add('chat-has-room');$('[data-chat-welcome]').hidden=true;$('[data-chat-conversation]').hidden=false;
     $('[data-chat-room-title]').textContent=t('loading');$('[data-chat-room-subtitle]').textContent='';$('[data-chat-room-hint]').textContent='';
-    $('[data-chat-members]').hidden=true;$('[data-chat-composer]').hidden=true;$('[data-chat-messages]').replaceChildren(node('p','chat-loading',t('loading')));
+    $('[data-chat-members]').hidden=true;$('[data-chat-room-safety]').hidden=true;$('[data-chat-composer]').hidden=true;$('[data-chat-messages]').replaceChildren(node('p','chat-loading',t('loading')));
     $('[data-chat-older]').hidden=true;$('[data-chat-newest]').hidden=true;renderList();
     try {
       const [room,history]=await Promise.all([api(`/rooms/${id}`),api(`/rooms/${id}/messages`)]);
       if(version!==opening||!root?.isConnected)return;
       detail=room;rows=history.messages;older=history.hasMore;renderHeader();renderMessages();scrollEnd();
-      $('[data-chat-composer]').hidden=false;$('[data-chat-input]').value=drafts.get(id)?.text || '';updateComposer();await markRead();
+      $('[data-chat-input]').value=drafts.get(id)?.text || '';updateComposer();await markRead();
     } catch(e) {if(version===opening){$('[data-chat-room-title]').textContent=t('title');$('[data-chat-messages]').replaceChildren();error(e);}}
   }
   async function sync() {
@@ -285,10 +307,17 @@
         const revised=new Map(refreshed.map(m=>[m.id,m]));
         const next=rows.filter(m=>!loadedIds.has(m.id)||revised.has(m.id)).map(m=>revised.get(m.id)||m);
         const known=new Set(next.map(m=>m.id));next.push(...history.messages.filter(m=>!known.has(m.id)));
-        if(JSON.stringify(next)!==JSON.stringify(rows)){
+        const latest=rooms.find(r=>r.id===id);
+        const accessChanged=latest && latest.canSend!==detail.room.canSend;
+        if(latest){
+          detail.room=latest;
+          if(latest.kind==='DIRECT' && typeof latest.canSend==='boolean') detail.canPin=latest.canSend;
+          renderHeader();
+          if(accessChanged) updateComposer();
+        }
+        if(accessChanged || JSON.stringify(next)!==JSON.stringify(rows)){
           rows=next;renderMessages();if(bottom&&!browsing)scrollEnd();else{box.scrollTop=top;if(history.messages.length)$('[data-chat-newest]').hidden=false;}
         }
-        const latest=rooms.find(r=>r.id===id);if(latest){detail.room=latest;renderHeader();}
         await markRead();
       }
       if(networkError&&!failedSend){clearError();networkError=false;}status(navigator.onLine?t('updated'):'Нет соединения');
@@ -304,7 +333,7 @@
     } catch(e){error(e);} finally{btn.disabled=false;}
   }
   async function send(event) {
-    event.preventDefault();if(sending||!current||(!$('[data-chat-input]').value.trim()&&!chosenFiles.has(current)))return;
+    event.preventDefault();if(sending||!canSend()||!current||(!$('[data-chat-input]').value.trim()&&!chosenFiles.has(current)))return;
     saveDraft();const id=current,draft=drafts.get(id);sending=true;failedSend=null;updateComposer();clearError();
     try {
       if(draft.file) {
@@ -317,7 +346,7 @@
       if(drafts.get(id)?.clientId===draft.clientId)drafts.delete(id);
       if(current===id){replying=null;$('[data-chat-input]').value='';await openRoom(id);$('[data-chat-input]').focus();}
       await refreshList();status(t('sent'));
-    } catch(e){failedSend=id;if(current===id)error(e);} finally{sending=false;if(root?.isConnected){showUpload(null);updateComposer();}}
+    } catch(e){failedSend=e.message==='DIRECT_UNAVAILABLE'?null:id;if(current===id)error(e);} finally{sending=false;if(root?.isConnected){showUpload(null);updateComposer();}}
   }
   function closeDialog() { dialogSequence++;clearTimeout(searchTimer);$('[data-chat-dialog]').close();dialogOpener?.focus(); }
   function dialogHeading(key) { $('[data-chat-dialog-title]').textContent=t(key); }
@@ -375,7 +404,8 @@
   async function showMembers() {
     const host=$('[data-chat-dialog-body]'),id=current,version=dialogSequence;host.append(node('p','',t('loading')));
     try {
-      const result=await api(`/rooms/${id}`);if(version!==dialogSequence)return;detail=result;host.replaceChildren();
+      const result=await api(`/rooms/${id}`);if(version!==dialogSequence)return;
+      detail=result;renderHeader();updateComposer();host.replaceChildren();
       host.append(node('p','chat-picker-hint',detail.room.kind==='PROJECT'?'Состав чата соответствует участникам проекта.':t(detail.room.kind==='GROUP'?'groupHint':'privateHint')));
       const list=node('ul','chat-member-list');detail.members.forEach(person=>{const li=node('li');li.append(node('span','chat-avatar small',personName(person).slice(0,1)),node('span','',personName(person)+(person.id===meId?` (${t('you')})`:'')));if(person.id===detail.room.ownerId)li.append(node('small','',t('owner')));list.append(li);});host.append(list);
       if(detail.room.kind==='GROUP') {
@@ -399,8 +429,8 @@
       <div class="chat-layout"><aside class="chat-inbox"><div class="chat-inbox-heading"><strong data-chat-label="title"></strong><span class="chat-total" data-chat-total>0</span></div><label class="chat-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" maxlength="80" data-chat-search data-chat-title="searchChats" data-chat-placeholder="searchChats"></label>
       <div class="chat-filters" role="group" data-chat-title="title"><button type="button" data-chat-filter="all" class="active" aria-pressed="true" data-chat-label="all"></button><button type="button" data-chat-filter="DIRECT" aria-pressed="false" data-chat-label="direct"></button><button type="button" data-chat-filter="GROUP" aria-pressed="false" data-chat-label="groups"></button></div><div class="chat-room-list" data-chat-list></div><small class="chat-sync" data-chat-status role="status"></small></aside>
       <section class="chat-welcome" data-chat-welcome><i class="bi bi-chat-dots" aria-hidden="true"></i><h3 data-chat-label="choose"></h3><p data-chat-label="chooseHint"></p><button class="chat-button" type="button" data-chat-global data-chat-label="global"></button></section>
-      <section class="chat-conversation" data-chat-conversation hidden aria-labelledby="chatRoomTitle"><header class="chat-conversation-header"><button type="button" class="chat-icon-button chat-back" data-chat-back data-chat-title="back"><i class="bi bi-arrow-left" aria-hidden="true"></i></button><span class="chat-avatar"><i class="bi bi-chat-dots" aria-hidden="true"></i></span><div class="chat-conversation-heading"><h3 id="chatRoomTitle" data-chat-room-title></h3><small data-chat-room-subtitle></small></div><button type="button" class="chat-icon-button" data-chat-members data-chat-title="members"><i class="bi bi-people" aria-hidden="true"></i></button></header>
-      <p class="chat-room-hint" data-chat-room-hint></p><div class="chat-saved-tools"><button type="button" class="chat-button" data-chat-saved="favorites">Избранные</button><button type="button" class="chat-button" data-chat-saved="pins">Закреплённые</button></div><form data-chat-message-search class="chat-search"><label class="visually-hidden" for="chat-message-query">Поиск в сообщениях</label><input id="chat-message-query" type="search" minlength="2" maxlength="120" required placeholder="Поиск в сообщениях"><button type="submit" class="chat-button">Найти</button><button type="button" data-chat-search-close class="chat-button" hidden>Закрыть</button></form><div data-chat-search-results aria-live="polite" hidden></div><button type="button" class="chat-older" data-chat-older data-chat-label="older" hidden></button><div class="chat-messages" data-chat-messages role="log" aria-live="off" data-chat-title="message"></div><button type="button" class="chat-newest" data-chat-newest data-chat-label="newest" hidden></button>
+      <section class="chat-conversation" data-chat-conversation hidden aria-labelledby="chatRoomTitle"><header class="chat-conversation-header"><button type="button" class="chat-icon-button chat-back" data-chat-back data-chat-title="back"><i class="bi bi-arrow-left" aria-hidden="true"></i></button><span class="chat-avatar"><i class="bi bi-chat-dots" aria-hidden="true"></i></span><div class="chat-conversation-heading"><h3 id="chatRoomTitle" data-chat-room-title></h3><small data-chat-room-subtitle></small></div><button type="button" class="chat-icon-button" data-chat-room-safety hidden><i class="bi bi-shield" aria-hidden="true"></i></button><button type="button" class="chat-icon-button" data-chat-members data-chat-title="members"><i class="bi bi-people" aria-hidden="true"></i></button></header>
+      <p class="chat-room-hint" role="status" data-chat-room-hint></p><div class="chat-saved-tools"><button type="button" class="chat-button" data-chat-saved="favorites">Избранные</button><button type="button" class="chat-button" data-chat-saved="pins">Закреплённые</button></div><form data-chat-message-search class="chat-search"><label class="visually-hidden" for="chat-message-query">Поиск в сообщениях</label><input id="chat-message-query" type="search" minlength="2" maxlength="120" required placeholder="Поиск в сообщениях"><button type="submit" class="chat-button">Найти</button><button type="button" data-chat-search-close class="chat-button" hidden>Закрыть</button></form><div data-chat-search-results aria-live="polite" hidden></div><button type="button" class="chat-older" data-chat-older data-chat-label="older" hidden></button><div class="chat-messages" data-chat-messages role="log" tabindex="-1" aria-live="off" data-chat-title="message"></div><button type="button" class="chat-newest" data-chat-newest data-chat-label="newest" hidden></button>
       <form class="chat-composer" data-chat-composer><div class="chat-reply-preview" data-chat-reply hidden></div><label class="visually-hidden" for="chatMessage" data-chat-label="message"></label><textarea id="chatMessage" rows="2" maxlength="4000" data-chat-input data-chat-placeholder="placeholder"></textarea><div class="chat-upload" data-chat-upload hidden><progress value="0" max="100" aria-labelledby="chatUploadStatus"></progress><span id="chatUploadStatus" role="status"></span></div><div class="chat-file-picker" data-chat-file-picker><input type="file" accept=".png,.jpg,.jpeg,.pdf,.docx,.zip" data-chat-file hidden><button type="button" class="chat-button" data-chat-attach><i class="bi bi-paperclip" aria-hidden="true"></i><span data-chat-label="fileAttach"></span></button><div class="chat-file-picked" data-chat-file-picked hidden><span data-chat-file-name></span><button type="button" class="chat-icon-button" data-chat-file-remove data-chat-title="fileRemove"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div></div><div class="chat-compose-footer"><small><span data-chat-label="hint"></span><span data-chat-count></span></small><button type="submit" class="chat-button primary" data-chat-send data-chat-label="send"></button></div></form></section></div>
       <dialog class="chat-dialog" data-chat-dialog aria-labelledby="chatDialogTitle"><div class="chat-dialog-heading"><h3 id="chatDialogTitle" data-chat-dialog-title></h3><button type="button" class="chat-icon-button" data-chat-close data-chat-title="close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="chat-error" role="alert" data-chat-dialog-error hidden><span></span></div><div data-chat-dialog-body></div></dialog>`;
     $('[data-chat-saved]').parentElement.hidden=preview;
@@ -437,6 +467,10 @@
     $('[data-chat-composer]').addEventListener('submit',send);
     $('[data-chat-input]').addEventListener('input',()=>{saveDraft();updateComposer();});
     $('[data-chat-input]').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('[data-chat-composer]').requestSubmit();}});
+    $('[data-chat-room-safety]').onclick=event=>{
+      const room=detail?.room;
+      if(room?.kind==='DIRECT') openUserActions(room.peerId,roomName(room),event.currentTarget);
+    };
     $('[data-chat-members]').onclick=()=>openDialog('members');$('[data-chat-global]').onclick=()=>openRoom('global');$('[data-chat-older]').onclick=loadOlder;
     $('[data-chat-retry]').onclick=async()=>{clearError();if(failedSend===current&&current){$('[data-chat-composer]').requestSubmit();return;}await sync();if(current&&!detail)openRoom(current);};
     $('[data-chat-back]').onclick=()=>{saveDraft();root.classList.remove('chat-has-room');$('[data-chat-search]').focus();};

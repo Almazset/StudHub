@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -30,8 +31,10 @@ public class UserApiController {
         u.setPassword(encoder.encode(req.password())); u.setRole(req.role() == null ? Role.USER : req.role());
         return UserView.from(users.save(u));
     }
-    @PutMapping("/{id}") public UserView update(@PathVariable Long id, @Valid @RequestBody UserUpdate req) {
-        UserAccount u = find(id);
+    @PutMapping("/{id}")
+    @Transactional
+    public UserView update(@PathVariable Long id, @Valid @RequestBody UserUpdate req) {
+        UserAccount u = users.findLockedById(id).orElseThrow(() -> new kz.studhub.service.ResourceNotFoundException("Пользователь не найден: " + id));
         String previousEmail = u.getEmail();
         Role previousRole = u.getRole();
         users.findByEmailIgnoreCase(req.email()).filter(existing -> !existing.getId().equals(id))

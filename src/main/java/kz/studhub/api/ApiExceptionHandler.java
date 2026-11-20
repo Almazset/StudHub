@@ -1,5 +1,6 @@
 package kz.studhub.api;
 
+import kz.studhub.chat.ChatService;
 import kz.studhub.service.ResourceNotFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.http.*;
@@ -10,6 +11,11 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(ChatService.Failure.class)
+    ResponseEntity<Map<String,String>> chatFailure(ChatService.Failure failure) {
+        return ResponseEntity.status(failure.status()).cacheControl(CacheControl.noStore())
+            .body(Map.of("error", failure.getMessage()));
+    }
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<Map<String,String>> uploadTooLarge() {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).cacheControl(CacheControl.noStore())

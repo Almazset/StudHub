@@ -33,6 +33,10 @@ public class UserAccount {
     private String fontSize = "normal";
     private String language = "ru";
     private String profileVisibility = "private";
+    @Column(nullable = false, length = 12, columnDefinition = "varchar(12) default 'members'")
+    private String directMessages = "members";
+    @Column(nullable = false, length = 12, columnDefinition = "varchar(12) default 'friends'")
+    private String presenceVisibility = "friends";
     @Column(columnDefinition = "bytea")
     @com.fasterxml.jackson.annotation.JsonIgnore
     private byte[] photo;
@@ -71,6 +75,10 @@ public class UserAccount {
     public void setLanguage(String value) { language = value; }
     public String getProfileVisibility() { return profileVisibility == null ? "private" : profileVisibility; }
     public void setProfileVisibility(String value) { profileVisibility = value; }
+    public String getDirectMessages() { return directMessages == null ? "members" : directMessages; }
+    public void setDirectMessages(String value) { directMessages = value; }
+    public String getPresenceVisibility() { return presenceVisibility == null ? "friends" : presenceVisibility; }
+    public void setPresenceVisibility(String value) { presenceVisibility = value; }
     public byte[] getPhoto() { return photo; }
     public void setPhoto(byte[] value) { photo = value; }
     public boolean isHasPhoto() { return photo != null && photo.length > 0; }
