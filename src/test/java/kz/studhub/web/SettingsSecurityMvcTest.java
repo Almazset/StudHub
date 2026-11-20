@@ -43,6 +43,7 @@ class SettingsSecurityMvcTest {
     @BeforeEach void setup() {
         owner = new UserAccount(); owner.setId(1L); owner.setFullName("Test Owner"); owner.setEmail("owner@example.com");
         when(settings.account(owner.getEmail())).thenReturn(owner);
+        when(settings.lockedAccount(owner.getEmail())).thenReturn(owner);
         when(users.findByEmailIgnoreCase(owner.getEmail())).thenReturn(Optional.of(owner));
         when(assignments.findAll()).thenReturn(List.of());
         when(support.findTop20ByOwnerIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());

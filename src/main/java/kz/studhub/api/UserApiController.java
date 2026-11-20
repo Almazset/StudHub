@@ -1,6 +1,11 @@
 package kz.studhub.api;
 
 import kz.studhub.model.Role;
+import kz.studhub.service.AccountDeletionService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import java.util.Map;
 import kz.studhub.model.UserAccount;
 import kz.studhub.repository.UserAccountRepository;
 import jakarta.validation.Valid;
@@ -18,9 +23,10 @@ import java.util.List;
 public class UserApiController {
     private final UserAccountRepository users;
     private final PasswordEncoder encoder;
+    private final AccountDeletionService deletion;
     private final kz.studhub.security.AccountSessions sessions;
-    public UserApiController(UserAccountRepository users, PasswordEncoder encoder, kz.studhub.security.AccountSessions sessions) {
-        this.users = users; this.encoder = encoder; this.sessions = sessions;
+    public UserApiController(UserAccountRepository users, PasswordEncoder encoder, kz.studhub.security.AccountSessions sessions, AccountDeletionService deletion) {
+        this.users = users; this.encoder = encoder; this.sessions = sessions; this.deletion = deletion;
     }
 
     @GetMapping public List<UserView> all() { return users.findAll().stream().map(UserView::from).toList(); }
@@ -46,7 +52,16 @@ public class UserApiController {
             sessions.revokeAll(previousEmail);
         return saved;
     }
-    @DeleteMapping("/{id}") public void delete(@PathVariable Long id) { var user = find(id); users.delete(user); sessions.revokeAll(user.getEmail()); }
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id, Authentication authentication) {
+        String email = deletion.delete(id, authentication.getName());
+        sessions.revokeAll(email);
+    }
+
+    @ExceptionHandler(AccountDeletionService.DeletionBlocked.class)
+    public ResponseEntity<Map<String, String>> deletionBlocked(AccountDeletionService.DeletionBlocked error) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", error.reason().name()));
+    }
 
     private UserAccount find(Long id) { return users.findById(id).orElseThrow(() -> new kz.studhub.service.ResourceNotFoundException("Пользователь не найден: " + id)); }
     public record UserRequest(@NotBlank @Size(min=2,max=80) String fullName, @NotBlank @Email @Size(max=120) String email,

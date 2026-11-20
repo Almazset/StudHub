@@ -109,7 +109,9 @@ public class ProjectController {
     @PostMapping @Transactional
     public Map<String,Object> create(Authentication auth, @Valid @RequestBody Create input) {
         String title=input.title().trim(); if(title.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        Project p=new Project(); p.ownerId=userId(auth);
+        Project p=new Project();
+        p.ownerId=users.findLockedByEmail(auth.getName())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED)).getId();
         p.title=title; p.description=input.description()==null ? "" : input.description().trim(); p.memberIds.add(p.ownerId);
         projects.saveAndFlush(p); history.record(p.id,auth,"Проект создан"); return view(p,p.ownerId);
     }
@@ -144,7 +146,7 @@ public class ProjectController {
         if(!p.ownerId.equals(viewer)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         p.requireOpen();
         users.findLockedById(Math.min(viewer, input.userId())).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        users.findById(input.userId()).filter(person -> privacy.canViewProfile(viewer, person))
+        users.findLockedById(input.userId()).filter(person -> privacy.canViewProfile(viewer, person))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if(p.memberIds.contains(input.userId()) || p.invitedIds.contains(input.userId())) return view(p,viewer);
         if(p.memberIds.size()+p.invitedIds.size()>=30) throw new ResponseStatusException(HttpStatus.CONFLICT,"Лимит участников и приглашений — 30");

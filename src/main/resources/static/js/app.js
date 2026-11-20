@@ -510,17 +510,18 @@
 
   document.querySelectorAll('[data-delete-course],[data-delete-assignment]').forEach((button) => {
     button.addEventListener('click', () => {
-      const modal = button.dataset.deleteCourse ? document.getElementById('deleteCourseModal') : document.getElementById('deleteAssignmentModal');
+      const deletesCourse = button.hasAttribute('data-delete-course');
+      const modal = document.getElementById(deletesCourse ? 'deleteCourseModal' : 'deleteAssignmentModal');
       const message = modal?.querySelector('[data-delete-message]');
       const form = modal?.querySelector('[data-delete-form]');
-      const template = button.dataset.deleteCourse ? msg('courseDeleteTemplate', 'Удалить курс «{0}»?') : msg('assignmentDeleteTemplate', 'Удалить задание «{0}»?');
+      const template = deletesCourse ? msg('courseDeleteTemplate', 'Удалить курс «{0}»?') : msg('assignmentDeleteTemplate', 'Удалить задание «{0}»?');
       if (message) message.textContent = template.replace('{0}', button.dataset.title || '');
-      if (form) form.action = `${button.dataset.deleteCourse ? '/courses' : '/assignments'}/${button.dataset.id}/delete`;
-      if (form) form.dataset.rowSelector = button.dataset.deleteCourse ? '.course-card' : '.assignment-row';
+      if (form) form.action = `${deletesCourse ? '/courses' : '/assignments'}/${button.dataset.id}/delete`;
+      if (form) form.dataset.rowSelector = deletesCourse ? '.course-card' : '.assignment-row';
     });
   });
   document.querySelectorAll('[data-delete-form]').forEach((form) => form.addEventListener('submit', (event) => {
-    if (form.dataset.confirmed === 'true') return;
+    if (form.closest('#deleteCourseModal') || form.dataset.confirmed === 'true') return;
     event.preventDefault();
     const id = form.action.split('/').at(-2);
     const row = document.querySelector(`${form.dataset.rowSelector}[data-id="${CSS.escape(id)}"]`);
@@ -618,7 +619,7 @@
         formError.classList.add('d-none'); form.dataset.editingId = user.id; userModal?.show();
       }
       if (remove && String(user.id) !== String(selfId)) {
-        deleteTarget = user; document.querySelector('[data-user-delete-message]').textContent = msg('usersDeleteConfirm', 'Удалить пользователя «{0}»?').replace('{0}', user.fullName); confirmDeleteModal?.show();
+        deleteTarget = user; document.querySelector('[data-user-delete-error]').classList.add('d-none'); document.querySelector('[data-user-delete-message]').textContent = msg('usersDeleteConfirm', 'Удалить пользователя «{0}»?').replace('{0}', user.fullName); confirmDeleteModal?.show();
       }
     });
     form?.addEventListener('submit', async (event) => {
@@ -654,12 +655,22 @@
         const response = await fetch(`/api/users/${deleteTarget.id}`, { method: 'DELETE', headers: { [csrfHeader]: csrfToken } });
         if (!response.ok) {
           const result = await response.json().catch(() => null);
-          throw new Error(result?.error || body.dataset.usersRequestError);
+          if (response.status === 409 && ['SELF', 'LINKED_DATA'].includes(result?.error)) {
+            const texts = {
+              SELF: {ru:'Нельзя удалить собственную учётную запись.', en:'You cannot delete your own account.', kk:'Өз аккаунтыңызды жою мүмкін емес.'},
+              LINKED_DATA: {ru:'Удаление недоступно: с аккаунтом связаны данные. Сохраните их и решите, как передать или удалить их перед удалением аккаунта.', en:'Cannot delete this account while related data exists. Preserve it and decide how to transfer or remove it first.', kk:'Аккаунтпен байланысты деректер бар. Оларды сақтап, беру немесе жою жолын шешіңіз.'}
+            };
+            throw new Error(texts[result.error][window.StudHubI18n?.language] || texts[result.error].ru);
+          }
+          throw new Error(body.dataset.usersRequestError);
         }
         users = users.filter((user) => user.id !== deleteTarget.id); renderUsers(document.querySelector('[data-user-search]')?.value || '');
         confirmDeleteModal?.hide(); toast(msg('usersDeleteSuccess', 'Пользователь удалён.')); deleteTarget = null;
-      } catch (error) { toast(error.message || body.dataset.usersRequestError, 'error'); }
-      finally { button.disabled = false; }
+      } catch (error) {
+        const errorBox = document.querySelector('[data-user-delete-error]');
+        errorBox.textContent = error.message || body.dataset.usersRequestError;
+        errorBox.classList.remove('d-none');
+      } finally { button.disabled = false; }
     });
   }
 })();

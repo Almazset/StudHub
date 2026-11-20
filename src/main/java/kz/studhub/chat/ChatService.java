@@ -247,10 +247,18 @@ public class ChatService {
         }
         return view(room,viewer);
     }
+    private void lockGroupAccounts(Set<Long> ids) {
+        if (!ids.isEmpty() && users.lockExistingIds(ids).size() != ids.size()) {
+            throw fail(HttpStatus.BAD_REQUEST,"MEMBER_UNAVAILABLE");
+        }
+    }
     public Room group(String email, String name, Set<Long> ids) {
-        Long viewer = lockedMe(email).getId();
+        Long viewer = me(email).getId();
         String title = name.strip();
         if (title.length() < 2) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
+        var participants = new HashSet<>(ids);
+        participants.add(viewer);
+        lockGroupAccounts(participants);
         selectable(ids,viewer); capacity(viewer); ids.forEach(this::capacity);
         var room = rooms.save(new ChatRoom(UUID.randomUUID().toString(),"GROUP",title,viewer));
         members.save(new ChatMember(room.id,viewer)); ids.forEach(id -> members.save(new ChatMember(room.id,id)));
@@ -354,7 +362,7 @@ public class ChatService {
     }
     public Message reaction(String email,String room,Long id,String emoji) {
         Long viewer=me(email).getId();
-        lockMessaging(accessible(room,viewer,false),viewer,false);
+        lockMessaging(accessible(room,viewer,false),viewer,true);
         accessible(room,viewer,true);
         if (!Set.of("", "👍", "❤️", "😂", "🎉", "🤔", "👀").contains(emoji)) throw fail(HttpStatus.BAD_REQUEST,"VALIDATION");
         var message=messageInRoom(room,id);
@@ -362,7 +370,7 @@ public class ChatService {
         return views(List.of(message),viewer).getFirst();
     }
     public Message favorite(String email,String room,Long id,boolean enabled) {
-        Long viewer=me(email).getId(); accessible(room,viewer,true);var message=messageInRoom(room,id);
+        Long viewer=lockedMe(email).getId(); accessible(room,viewer,true);var message=messageInRoom(room,id);
         if(enabled) message.favorites.add(viewer);else message.favorites.remove(viewer);
         return views(List.of(message),viewer).getFirst();
     }
@@ -422,7 +430,13 @@ public class ChatService {
         member.lastRead = Math.max(member.lastRead,message.id); members.save(member);
     }
     public void addMembers(String email, String id, Set<Long> ids) {
-        Long viewer = me(email).getId(); var room = accessible(id,viewer,true);
+        Long viewer = me(email).getId();
+        if (!rooms.existsByIdAndKindAndOwnerId(id,"GROUP",viewer)) {
+            accessible(id,viewer,false);
+            throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
+        }
+        lockGroupAccounts(ids);
+        var room = accessible(id,viewer,true);
         if (!room.kind.equals("GROUP") || !viewer.equals(room.ownerId)) throw fail(HttpStatus.FORBIDDEN,"OWNER_ONLY");
         var current = members.findByRoomIdOrderByUserId(id).stream().map(m -> m.userId).collect(Collectors.toSet());
         var added = new HashSet<>(ids); added.removeAll(current);

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -134,8 +135,9 @@ public class SettingsApiController {
         sessions.revokeOthers(auth.getName(), session.getId()); return Map.of("saved", true);
     }
     @PostMapping("/support")
+    @Transactional
     public Map<String, Object> support(Authentication auth, @Valid @RequestBody Ticket input) {
-        var user = settings.account(auth.getName());
+        var user = settings.lockedAccount(auth.getName());
         if (input.subject().trim().length() < 3 || input.message().trim().length() < 10) throw new IllegalArgumentException("settings.error.validation");
         if (support.countByOwnerIdAndCreatedAtAfter(user.getId(), Instant.now().minusSeconds(86400)) >= 5) throw new IllegalArgumentException("settings.error.supportLimit");
         var ticket = new SupportRequest(); ticket.setOwnerId(user.getId()); ticket.setSubject(input.subject().trim()); ticket.setMessage(input.message().trim());
