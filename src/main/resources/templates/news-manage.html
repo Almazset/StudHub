@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head><th:block th:replace="~{fragments :: head('Управление новостями')}"></th:block></head>
+<body class="app-shell" data-page="news">
+<th:block th:replace="~{fragments :: skip}"></th:block>
+<th:block th:replace="~{fragments :: sidebar}"></th:block>
+<div class="drawer-backdrop" data-drawer-close></div>
+<div class="app-main">
+  <th:block th:replace="~{fragments :: topbar('Новости')}"></th:block>
+  <main id="main-content" class="content container-fluid">
+    <section class="page-intro">
+      <div>
+        <a class="text-link" th:href="@{/news}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Лента новостей</a>
+        <h2 class="news-page-title">Управление публикациями</h2>
+      </div>
+      <a class="btn btn-primary" th:href="@{/news/new}">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> Написать новость
+      </a>
+    </section>
+
+    <p class="notice-info" role="status" th:if="${newsNotice != null}" th:text="${newsNotice}"></p>
+    <section class="surface news-management" aria-label="Публикации StudHub">
+      <form class="news-management-filters" th:action="@{/news/manage}" method="get"
+            role="search" aria-label="Поиск публикаций">
+        <div class="field-group">
+          <label for="news-search">Поиск по заголовку</label>
+          <input id="news-search" type="search" name="q" maxlength="120" th:value="${searchQuery}">
+        </div>
+        <div class="field-group">
+          <label for="news-category-filter">Категория</label>
+          <select id="news-category-filter" name="category">
+            <option value="">Все категории</option>
+            <option th:each="category : ${categories}" th:value="${category}"
+                    th:selected="${category == selectedCategory}" th:text="${category.label}"></option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="news-state-filter">Состояние публикации</label>
+          <select id="news-state-filter" name="state">
+            <option value="">Все состояния</option>
+            <option value="published" th:selected="${selectedState == 'published'}">Опубликовано</option>
+            <option value="draft" th:selected="${selectedState == 'draft'}">Черновики</option>
+          </select>
+        </div>
+        <button class="btn btn-light" type="submit">Найти</button>
+        <a class="text-link" th:if="${selectedCategory != null or selectedState != null or !#strings.isEmpty(searchQuery)}"
+           th:href="@{/news/manage}">Сбросить</a>
+      </form>
+
+      <div class="empty-state news-management-empty" th:if="${newsPage.empty}">
+        <span class="empty-illustration"><i class="bi bi-newspaper" aria-hidden="true"></i></span>
+        <h3>Публикации не найдены</h3>
+        <p>Попробуйте изменить фильтры или написать новость.</p>
+      </div>
+      <ul class="news-management-list" th:unless="${newsPage.empty}">
+        <li class="news-management-row" th:each="post : ${newsPage.content}" th:attr="data-news-entry=${post.id}">
+          <div class="news-management-title">
+            <div class="news-entry-meta">
+              <div th:replace="~{news-parts :: metadata(${post})}"></div>
+              <span class="news-publication-state" th:text="${post.published ? 'Опубликовано' : 'Черновик'}"></span>
+            </div>
+            <h3><a th:href="@{/news/{id}(id=${post.id})}" th:text="${post.title}"></a></h3>
+          </div>
+          <div class="news-actions news-row-actions">
+            <a class="btn btn-light" th:href="@{/news/{id}/edit(id=${post.id})}">Редактировать</a>
+            <form th:if="${post.published}" data-news-action="unpublish" th:action="@{/news/{id}/unpublish(id=${post.id})}" method="post">
+              <button type="submit" class="btn btn-light">Снять с публикации</button>
+            </form>
+            <form th:unless="${post.published}" data-news-action="publish" th:action="@{/news/{id}/publish(id=${post.id})}" method="post">
+              <button type="submit" class="btn btn-primary">Опубликовать</button>
+            </form>
+            <details class="news-delete-confirmation">
+              <summary class="btn btn-light">Удалить</summary>
+              <form data-news-action="delete" th:action="@{/news/{id}/delete(id=${post.id})}" method="post">
+                <input type="hidden" name="from" value="manage">
+                <p th:text="|Удалить «${post.title}» без возможности восстановления?|"></p>
+                <button class="btn btn-danger" type="submit">Удалить навсегда</button>
+              </form>
+            </details>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <nav class="news-pagination" aria-label="Страницы публикаций"
+         th:if="${newsPage.hasPrevious() or newsPage.hasNext()}">
+      <a class="btn btn-light" th:if="${newsPage.hasPrevious()}" rel="prev"
+         th:href="@{/news/manage(page=${newsPage.number - 1},category=${selectedCategory},state=${selectedState},q=${searchQuery})}">Назад</a>
+      <span th:unless="${newsPage.empty}" th:text="|Страница ${newsPage.number + 1} из ${newsPage.totalPages}|"></span>
+      <a class="btn btn-light" th:if="${newsPage.hasNext()}" rel="next"
+         th:href="@{/news/manage(page=${newsPage.number + 1},category=${selectedCategory},state=${selectedState},q=${searchQuery})}">Далее</a>
+    </nav>
+  </main>
+  <th:block th:replace="~{fragments :: footer}"></th:block>
+</div>
+<th:block th:replace="~{fragments :: toastRegion}"></th:block>
+<th:block th:replace="~{fragments :: scripts}"></th:block>
+</body>
+</html>

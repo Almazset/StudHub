@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="metadata(post)" class="news-meta">
+  <span class="status-badge" th:text="${post.category.label}"></span>
+  <span class="status-badge news-status" th:if="${post.status != null}"
+        th:attr="data-news-status=${post.status.name()}" th:text="${post.status.label}"></span>
+  <time th:if="${post.publishedAt != null}" th:attr="datetime=${post.publishedAt}"
+        th:text="${#temporals.format(post.publishedAt, 'dd.MM.yyyy')}"></time>
+</div>
+
+<div th:fragment="source(post)" th:if="${post.external}" class="news-source">
+  <div class="news-source-info">
+    <span>Источник</span>
+    <strong th:text="${post.sourceLabel}"></strong>
+  </div>
+  <time th:if="${post.sourceDate != null}" th:attr="datetime=${post.sourceDate}"
+        th:text="${#temporals.format(post.sourceDate, 'dd.MM.yyyy')}"></time>
+  <span th:if="${post.sourceDate == null}">Дата источника не указана</span>
+  <a class="text-link news-source-link" th:href="${post.safeLink}" target="_blank" rel="noopener noreferrer">
+    Открыть источник <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+    <span class="visually-hidden">в новой вкладке</span>
+  </a>
+</div>
+
+<p th:fragment="eventDate(post)" th:if="${post.eventDate != null}" class="news-event">
+  <i class="bi bi-calendar-event" aria-hidden="true"></i>
+  <span th:text="${post.status != null and post.status.name() != 'RELEASED' ? 'Ориентир' : 'Дата события'}">Дата события</span>
+  <time th:attr="datetime=${post.eventDate}" th:text="${#temporals.format(post.eventDate, 'dd.MM.yyyy')}"></time>
+</p>
+</body>
+</html>
