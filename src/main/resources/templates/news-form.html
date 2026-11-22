@@ -1,11 +1,101 @@
 <!doctype html>
-<html lang="ru" xmlns:th="http://www.thymeleaf.org"><head><th:block th:replace="~{fragments :: head('Публикация')}"></th:block></head>
-<body class="app-shell" data-page="news"><th:block th:replace="~{fragments :: skip}"></th:block><th:block th:replace="~{fragments :: sidebar}"></th:block><div class="drawer-backdrop" data-drawer-close></div><div class="app-main"><th:block th:replace="~{fragments :: topbar('Публикация')}"></th:block>
-<main id="main-content" class="content container-fluid"><a class="text-link" th:href="@{/news}">← Все новости</a><section class="surface news-article"><h2 th:text="${postId == null ? 'Новая публикация' : 'Редактировать публикацию'}"></h2><p class="muted-copy">После сохранения новость будет видна всем пользователям StudHub.</p><form th:object="${newsForm}" th:action="${postId == null ? '/news' : '/news/' + postId}" method="post">
-<div class="alert alert-danger" role="alert" th:if="${#fields.hasAnyErrors()}"><p th:each="error : ${#fields.allErrors()}" th:text="${error}"></p></div>
-<div class="field-group"><label for="title">Заголовок</label><input id="title" th:field="*{title}" required maxlength="160" placeholder="Например: открыт курс по Java"></div>
-<div class="field-group"><label for="category">Категория</label><select id="category" th:field="*{category}"><option th:each="category : ${categories}" th:value="${category}" th:text="${category.label}"></option></select></div>
-<div class="field-group"><label for="body">Текст новости</label><textarea id="body" th:field="*{body}" required maxlength="12000" rows="10" placeholder="Что нового и почему это полезно"></textarea></div>
-<div class="field-group"><label for="link">Ссылка на курс или источник (необязательно)</label><input id="link" th:field="*{link}" maxlength="2000" placeholder="https://… или /courses/123"><small class="field-hint">Для внешних новостей укажите первоисточник. Для своего курса скопируйте его адрес.</small></div>
-<div class="field-group"><label for="eventDate">Дата события или планируемого обновления (необязательно)</label><input id="eventDate" th:field="*{eventDate}" type="date"><small class="field-hint">Это дата события, а не отложенная публикация: новость появится сразу.</small></div>
-<div class="form-actions"><a class="btn btn-light" th:href="@{/news}">Отмена</a><button class="btn btn-primary" type="submit" th:text="${postId == null ? 'Опубликовать' : 'Сохранить изменения'}"></button></div></form></section></main><th:block th:replace="~{fragments :: footer}"></th:block></div><th:block th:replace="~{fragments :: toastRegion}"></th:block><th:block th:replace="~{fragments :: scripts}"></th:block></body></html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head><th:block th:replace="~{fragments :: head('Редактор новостей')}"></th:block></head>
+<body class="app-shell" data-page="news">
+<th:block th:replace="~{fragments :: skip}"></th:block>
+<th:block th:replace="~{fragments :: sidebar}"></th:block>
+<div class="drawer-backdrop" data-drawer-close></div>
+<div class="app-main">
+  <th:block th:replace="~{fragments :: topbar('Новости')}"></th:block>
+  <main id="main-content" class="content container-fluid">
+    <a class="text-link" th:href="@{/news/manage}">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i> Управление публикациями
+    </a>
+    <section class="surface news-article">
+      <h2 th:text="${postId == null ? 'Новая публикация' : 'Редактировать публикацию'}"></h2>
+      <p class="muted-copy" th:if="${postId != null}"
+         th:text="${published ? 'Изменения появятся в ленте после сохранения.' : 'Черновик виден администраторам. Его можно опубликовать из списка публикаций.'}"></p>
+      <form data-news-editor th:object="${newsForm}"
+            th:action="${postId == null} ? @{/news} : @{/news/{id}(id=${postId})}" method="post">
+        <p class="alert alert-danger" role="alert" th:if="${#fields.hasAnyErrors()}">Проверьте выделенные поля.</p>
+        <div class="field-group">
+          <label for="title">Заголовок</label>
+          <input id="title" th:field="*{title}" required maxlength="160" th:errorclass="is-invalid"
+                 th:attr="aria-invalid=${#fields.hasErrors('title') ? 'true' : null}" aria-describedby="news-title-error">
+          <small id="news-title-error" class="field-error" th:errors="*{title}"></small>
+        </div>
+        <div class="news-form-grid">
+          <div class="field-group">
+            <label for="category">Категория</label>
+            <select id="category" th:field="*{category}" required th:errorclass="is-invalid"
+                    th:attr="aria-invalid=${#fields.hasErrors('category') ? 'true' : null}" aria-describedby="news-category-error">
+              <option th:each="category : ${categories}" th:value="${category}" th:text="${category.label}"></option>
+            </select>
+            <small id="news-category-error" class="field-error" th:errors="*{category}"></small>
+          </div>
+          <div class="field-group" data-news-status-field>
+            <label for="status">Статус обновления</label>
+            <select id="status" th:field="*{status}" th:errorclass="is-invalid"
+                    th:attr="aria-invalid=${#fields.hasErrors('status') ? 'true' : null}" aria-describedby="news-status-error">
+              <option value="">Выберите статус</option>
+              <option th:each="status : ${statuses}" th:value="${status}" th:text="${status.label}"></option>
+            </select>
+            <small id="news-status-error" class="field-error" th:errors="*{status}"></small>
+          </div>
+          <div class="field-group">
+            <label for="eventDate">Дата события <span>(необязательно)</span></label>
+            <input id="eventDate" th:field="*{eventDate}" type="date" th:errorclass="is-invalid"
+                   th:attr="aria-invalid=${#fields.hasErrors('eventDate') ? 'true' : null}" aria-describedby="news-event-hint news-event-error">
+            <small id="news-event-hint" class="field-hint">Дата для читателей. Время публикации она не меняет.</small>
+            <small id="news-event-error" class="field-error" th:errors="*{eventDate}"></small>
+          </div>
+        </div>
+        <div class="field-group">
+          <label for="body">Текст новости</label>
+          <textarea id="body" th:field="*{body}" required maxlength="12000" rows="8" th:errorclass="is-invalid"
+                    th:attr="aria-invalid=${#fields.hasErrors('body') ? 'true' : null}" aria-describedby="news-body-error"></textarea>
+          <small id="news-body-error" class="field-error" th:errors="*{body}"></small>
+        </div>
+        <div class="field-group">
+          <label for="link">Ссылка на курс или источник <span>(необязательно)</span></label>
+          <input id="link" th:field="*{link}" maxlength="2000" inputmode="url" placeholder="https://… или /courses/123"
+                 th:classappend="${#fields.hasErrors('safeLink') or #fields.hasErrors('link')} ? 'is-invalid'"
+                 th:attr="aria-invalid=${(#fields.hasErrors('safeLink') or #fields.hasErrors('link')) ? 'true' : null}"
+                 aria-describedby="news-link-hint news-link-error news-safe-link-error">
+          <small id="news-link-hint" class="field-hint">Для внешней ссылки укажите название и дату публикации у источника.</small>
+          <small id="news-link-error" class="field-error" th:errors="*{link}"></small>
+          <small id="news-safe-link-error" class="field-error" th:errors="*{safeLink}"></small>
+        </div>
+        <fieldset class="news-source-fields" data-news-source-fields>
+          <legend>Внешний источник</legend>
+          <div class="news-form-grid">
+            <div class="field-group">
+              <label for="sourceName">Название источника</label>
+              <input id="sourceName" th:field="*{sourceName}" maxlength="120" th:errorclass="is-invalid"
+                     th:attr="aria-invalid=${#fields.hasErrors('sourceName') ? 'true' : null}" aria-describedby="news-source-name-error">
+              <small id="news-source-name-error" class="field-error" th:errors="*{sourceName}"></small>
+            </div>
+            <div class="field-group">
+              <label for="sourceDate">Дата публикации у источника</label>
+              <input id="sourceDate" th:field="*{sourceDate}" type="date" th:errorclass="is-invalid"
+                     th:attr="aria-invalid=${#fields.hasErrors('sourceDate') ? 'true' : null}" aria-describedby="news-source-date-error">
+              <small id="news-source-date-error" class="field-error" th:errors="*{sourceDate}"></small>
+            </div>
+          </div>
+        </fieldset>
+        <div class="form-actions news-editor-actions">
+          <a class="btn btn-light" th:href="@{/news/manage}">Отмена</a>
+          <button th:if="${postId == null}" class="btn btn-light" type="submit" name="intent" value="draft">Сохранить черновик</button>
+          <button th:if="${postId == null}" class="btn btn-primary" type="submit" data-news-publish>Опубликовать</button>
+          <button th:if="${postId != null}" class="btn btn-primary" type="submit" data-news-save>Сохранить изменения</button>
+        </div>
+      </form>
+    </section>
+  </main>
+  <th:block th:replace="~{fragments :: footer}"></th:block>
+</div>
+<th:block th:replace="~{fragments :: toastRegion}"></th:block>
+<th:block th:replace="~{fragments :: scripts}"></th:block>
+<script th:src="@{/js/news-editor.js}" defer></script>
+</body>
+</html>

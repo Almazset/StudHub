@@ -5,6 +5,7 @@ import kz.studhub.service.CourseService;
 import kz.studhub.repository.UserAccountRepository;
 import kz.studhub.model.Assignment;
 import org.springframework.stereotype.Controller;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.context.MessageSource;
@@ -32,7 +33,7 @@ public class HomeController {
     }
     @GetMapping("/")
     public String home(Model model, Authentication authentication) {
-        model.addAttribute("latestNews", news.findTop3ByOrderByPublishedAtDescIdDesc());
+        model.addAttribute("latestNews", news.latestPublished(PageRequest.of(0, 3)));
         var allAssignments = assignments.findAll();
         var allCourses = courses.findAll();
         var currentAccount = users.findByEmailIgnoreCase(authentication.getName())

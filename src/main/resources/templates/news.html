@@ -1,8 +1,64 @@
 <!doctype html>
-<html lang="ru" xmlns:th="http://www.thymeleaf.org"><head><th:block th:replace="~{fragments :: head('Новости')}"></th:block></head>
-<body class="app-shell" data-page="news"><th:block th:replace="~{fragments :: skip}"></th:block><th:block th:replace="~{fragments :: sidebar}"></th:block><div class="drawer-backdrop" data-drawer-close></div><div class="app-main"><th:block th:replace="~{fragments :: topbar('Новости')}"></th:block>
-<main id="main-content" class="content container-fluid"><section class="page-intro"><div><p class="eyebrow">STUDHUB JOURNAL</p><h2>Новости и открытия</h2><p class="muted-copy">Новые курсы, развитие StudHub и полезное для учёбы.</p></div><a th:if="${canPublishNews}" class="btn btn-primary" th:href="@{/news/new}"><i class="bi bi-plus-lg"></i> Написать новость</a></section>
-<nav class="news-filters" aria-label="Категории новостей"><a class="filter-pill" th:classappend="${selectedCategory == null} ? 'active'" th:href="@{/news}">Все новости</a><a class="filter-pill" th:each="category : ${categories}" th:classappend="${category == selectedCategory} ? 'active'" th:href="@{/news(category=${category})}" th:text="${category.label}"></a></nav>
-<div class="surface empty-state" th:if="${newsPage.empty}"><i class="bi bi-newspaper"></i><h3>Публикаций пока нет</h3><p>Здесь появятся новости о курсах и обновлениях проекта.</p></div>
-<div class="news-grid"><article class="surface news-card" th:each="post : ${newsPage.content}"><div class="news-meta"><span class="status-badge" th:text="${post.category.label}"></span><time th:text="${#temporals.format(post.publishedAt,'dd.MM.yyyy')}"></time></div><h3><a th:href="@{/news/{id}(id=${post.id})}" th:text="${post.title}"></a></h3><p th:text="${post.excerpt}"></p><p class="news-event" th:if="${post.eventDate != null}"><i class="bi bi-calendar-event"></i> Дата события: <span th:text="${#temporals.format(post.eventDate,'dd.MM.yyyy')}"></span></p><a class="text-link" th:href="@{/news/{id}(id=${post.id})}">Читать новость <i class="bi bi-arrow-right"></i></a></article></div>
-<nav class="news-pagination" aria-label="Страницы"><a class="btn btn-light" th:if="${newsPage.hasPrevious()}" th:href="@{/news(page=${newsPage.number - 1},category=${selectedCategory})}">Назад</a><span th:unless="${newsPage.empty}" th:text="${newsPage.number + 1} + ' / ' + ${newsPage.totalPages}"></span><a class="btn btn-light" th:if="${newsPage.hasNext()}" th:href="@{/news(page=${newsPage.number + 1},category=${selectedCategory})}">Далее</a></nav></main><th:block th:replace="~{fragments :: footer}"></th:block></div><th:block th:replace="~{fragments :: toastRegion}"></th:block><th:block th:replace="~{fragments :: scripts}"></th:block></body></html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head><th:block th:replace="~{fragments :: head('Новости')}"></th:block></head>
+<body class="app-shell" data-page="news">
+<th:block th:replace="~{fragments :: skip}"></th:block>
+<th:block th:replace="~{fragments :: sidebar}"></th:block>
+<div class="drawer-backdrop" data-drawer-close></div>
+<div class="app-main">
+  <th:block th:replace="~{fragments :: topbar('Новости')}"></th:block>
+  <main id="main-content" class="content container-fluid">
+    <section class="page-intro">
+      <div>
+        <h2>Новости StudHub</h2>
+        <p class="muted-copy">Обновления проекта, новые курсы, анонсы и материалы для учёбы.</p>
+      </div>
+      <div class="news-actions" th:if="${canPublishNews}">
+        <a class="btn btn-light" th:href="@{/news/manage}">Управление публикациями</a>
+        <a class="btn btn-primary" th:href="@{/news/new}">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> Написать новость
+        </a>
+      </div>
+    </section>
+
+    <nav class="news-filters" aria-label="Категории новостей">
+      <a class="filter-pill" data-news-category="ALL" th:href="@{/news}"
+         th:classappend="${selectedCategory == null} ? 'active'"
+         th:attr="aria-current=${selectedCategory == null ? 'page' : null}">Все новости</a>
+      <a class="filter-pill" th:each="category : ${categories}" th:href="@{/news(category=${category})}"
+         th:classappend="${category == selectedCategory} ? 'active'"
+         th:attr="data-news-category=${category.name()},aria-current=${category == selectedCategory ? 'page' : null}"
+         th:text="${category.label}"></a>
+    </nav>
+
+    <div class="surface empty-state" th:if="${newsPage.empty}">
+      <span class="empty-illustration"><i class="bi bi-newspaper" aria-hidden="true"></i></span>
+      <h3 th:text="${selectedCategory == null ? 'Публикаций пока нет' : 'В этой категории пока нет публикаций'}"></h3>
+      <a th:if="${selectedCategory != null}" class="text-link" th:href="@{/news}">Показать все новости</a>
+    </div>
+
+    <div class="news-grid" th:unless="${newsPage.empty}">
+      <article class="surface news-card" th:each="post : ${newsPage.content}">
+        <div th:replace="~{news-parts :: metadata(${post})}"></div>
+        <h3><a th:href="@{/news/{id}(id=${post.id})}" th:text="${post.title}"></a></h3>
+        <p th:text="${post.excerpt}"></p>
+        <p th:replace="~{news-parts :: eventDate(${post})}"></p>
+        <div th:replace="~{news-parts :: source(${post})}"></div>
+      </article>
+    </div>
+
+    <nav class="news-pagination" aria-label="Страницы новостей"
+         th:if="${newsPage.hasPrevious() or newsPage.hasNext()}">
+      <a class="btn btn-light" th:if="${newsPage.hasPrevious()}"
+         th:href="@{/news(page=${newsPage.number - 1},category=${selectedCategory})}" rel="prev">Назад</a>
+      <span th:unless="${newsPage.empty}" th:text="|Страница ${newsPage.number + 1} из ${newsPage.totalPages}|"></span>
+      <a class="btn btn-light" th:if="${newsPage.hasNext()}"
+         th:href="@{/news(page=${newsPage.number + 1},category=${selectedCategory})}" rel="next">Далее</a>
+    </nav>
+  </main>
+  <th:block th:replace="~{fragments :: footer}"></th:block>
+</div>
+<th:block th:replace="~{fragments :: toastRegion}"></th:block>
+<th:block th:replace="~{fragments :: scripts}"></th:block>
+</body>
+</html>

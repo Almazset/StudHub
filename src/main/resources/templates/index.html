@@ -13,7 +13,7 @@
     <p class="muted-copy" th:text="#{dashboard.startText}">Выберите курс из каталога и добавьте первое задание со сроком. Здесь появятся ваш прогресс и дедлайны.</p>
     <div class="d-flex flex-wrap gap-2"><a class="btn btn-primary" th:href="@{/assignments/new}" th:text="#{dashboard.createAssignment}">Добавить задание</a><a class="btn btn-light" th:href="@{/courses}" th:text="#{dashboard.browseCourses}">Выбрать курс</a></div>
   </section>
-  <section class="surface news-home"><div class="news-home-header"><h3>Новости StudHub</h3><a th:href="@{/news}">Все новости →</a></div><p class="muted-copy" th:if="${#lists.isEmpty(latestNews)}">Здесь появятся новые курсы, анонсы и обновления сайта.</p><div class="news-home-links"><a th:each="post : ${latestNews}" th:href="@{/news/{id}(id=${post.id})}"><small th:text="${post.category.label}"></small><strong th:text="${post.title}"></strong></a></div></section>
+  <section class="surface news-home"><div class="news-home-header"><h3>Новости StudHub</h3><a th:href="@{/news}">Все новости →</a></div><p class="muted-copy" th:if="${#lists.isEmpty(latestNews)}">Здесь появятся новые курсы, анонсы и обновления сайта.</p><div class="news-home-links"><a th:each="post : ${latestNews}" th:href="@{/news/{id}(id=${post.id})}"><small><span th:text="${post.category.label}"></span><span th:if="${post.status != null}" th:text="${' · ' + post.status.label}"></span></small><strong th:text="${post.title}"></strong></a></div></section>
   <div class="dashboard-workspace">
     <div class="dashboard-core">
       <div class="dashboard-summary">
