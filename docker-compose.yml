@@ -7,9 +7,15 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-studhub}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-studhub_pass}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${DB_PORT:-15432}:5432"
     volumes:
       - studhub-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "${DB_USERNAME:-studhub}", "-d", "${DB_NAME:-studhub}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
 
 volumes:
   studhub-postgres-data:

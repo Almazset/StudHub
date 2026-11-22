@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-postgresql:
+    name: Build and PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: studhub_ci
+          POSTGRES_USER: studhub_ci
+          POSTGRES_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}-disposable
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U studhub_ci -d studhub_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Run tests and package the application
+        run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Start prod on an empty database and verify health
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          DB_URL: jdbc:postgresql://127.0.0.1:${{ job.services.postgres.ports['5432'] }}/studhub_ci
+          DB_USERNAME: studhub_ci
+          DB_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}-disposable
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+          SERVER_ADDRESS: 127.0.0.1
+          SERVER_PORT: '18080'
+        run: |
+          set -euo pipefail
+          export STUDHUB_2FA_KEY
+          STUDHUB_2FA_KEY=$(openssl rand -base64 32)
+          jars=(target/studhub-*.jar)
+          if [[ ${#jars[@]} -ne 1 || ! -f "${jars[0]}" ]]; then
+            echo '::error::Expected one packaged StudHub JAR.'
+            exit 1
+          fi
+          java -jar "${jars[0]}" >"$RUNNER_TEMP/studhub-smoke.log" 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true; wait "$app_pid" 2>/dev/null || true' EXIT
+
+          health_url=http://127.0.0.1:18080/actuator/health
+          readiness=''
+          deadline=$((SECONDS + 90))
+          while (( SECONDS < deadline )); do
+            if readiness=$(curl --fail --silent --max-time 2 "$health_url/readiness"); then
+              break
+            fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              echo '::error::StudHub exited before becoming ready on a clean PostgreSQL database.'
+              exit 1
+            fi
+            sleep 1
+          done
+          if ! jq -e '.status == "UP" and keys == ["status"]' <<<"$readiness" >/dev/null; then
+            echo '::error::Readiness did not return the expected healthy response.'
+            exit 1
+          fi
+          for path in "$health_url" "$health_url/liveness"; do
+            if ! curl --fail --silent --max-time 2 "$path" |
+              jq -e '.status == "UP" and (keys - ["groups", "status"] | length == 0)' >/dev/null; then
+              echo '::error::A health endpoint did not return the expected healthy response.'
+              exit 1
+            fi
+          done
+
+          migrated=$(docker exec "$POSTGRES_CONTAINER" psql -X -w -U studhub_ci -d studhub_ci -Atq \
+            -v ON_ERROR_STOP=1 -c "select exists (select 1 from flyway_schema_history where version in ('11', '011') and type = 'SQL' and success);")
+          if [[ "$migrated" != t ]]; then
+            echo '::error::Flyway did not install the initial schema.'
+            exit 1
+          fi

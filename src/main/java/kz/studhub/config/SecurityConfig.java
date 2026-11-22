@@ -3,6 +3,7 @@ package kz.studhub.config;
 import kz.studhub.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -45,6 +46,8 @@ public class SecurityConfig {
         var deniedPage = new org.springframework.security.web.access.AccessDeniedHandlerImpl();
         deniedPage.setErrorPage("/access-denied");
         http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
+                .requestMatchers("/actuator", "/actuator/**").denyAll()
                 .requestMatchers("/login", "/register", "/css/**", "/js/**", "/fonts/**", "/img/**", "/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
                 .requestMatchers("/users/**").hasRole("ADMIN")
