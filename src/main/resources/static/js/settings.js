@@ -354,6 +354,12 @@
   setupMenu();
   applyAppearance({theme:localStorage.getItem('studhub-theme') || 'light',fontSize:localStorage.getItem('studhub-font-size') || 'normal',language:i18n.language});
   const requested = window.studhubPendingSettings || (preview ? location.hash.match(/^#settings-(\w+)/)?.[1] : document.querySelector('[data-settings-root]') ? location.hash.slice(1) || 'appearance' : null);
+  if (!preview && document.querySelector('[data-settings-root]')) {
+    window.addEventListener('hashchange', () => {
+      const next = location.hash.slice(1) || 'appearance';
+      if (next !== section) void open(next);
+    });
+  }
   if (requested) open(requested);
   else if (preview || document.body.classList.contains('app-shell')) ensureLoaded().catch(() => {});
 })();

@@ -26,96 +26,149 @@
     setTheme(body.dataset.theme === 'dark' ? 'light' : 'dark');
   });
 
-  const panelTriggers = [...document.querySelectorAll('[data-panel-trigger]')];
-  const closePanels = (restoreFocus = false) => {
-    panelTriggers.forEach((trigger) => {
-      const panel = document.getElementById(trigger.getAttribute('aria-controls'));
-      if (!panel || panel.hidden) return;
-      panel.hidden = true;
-      panel.inert = true;
-      trigger.setAttribute('aria-expanded', 'false');
-      if (restoreFocus) trigger.focus();
-    });
-  };
-  panelTriggers.forEach((trigger) => trigger.addEventListener('click', () => {
-    const panel = document.getElementById(trigger.getAttribute('aria-controls'));
-    if (!panel) return;
-    const opening = panel.hidden;
-    closePanels();
-    panel.hidden = !opening;
-    panel.inert = !opening;
-    trigger.setAttribute('aria-expanded', String(opening));
-    if (opening) panel.querySelector('input,button,a')?.focus();
+  const main = document.getElementById('main-content');
+  if (main) main.tabIndex = -1;
+
+  const panels = [...document.querySelectorAll('[data-panel-trigger]')].map((trigger) => ({
+    trigger,
+    panel: document.getElementById(trigger.getAttribute('aria-controls')),
+    tool: trigger.closest('.topbar-tool'),
+  })).filter(({ panel }) => panel);
+  let openPanel;
+  function closePanel(restoreFocus = false) {
+    if (!openPanel) return;
+    const { trigger, panel } = openPanel;
+    openPanel = null;
+    trigger.setAttribute('aria-expanded', 'false');
+    panel.inert = true;
+    panel.hidden = true;
+    if (restoreFocus) trigger.focus();
+  }
+
+  panels.forEach((entry) => entry.trigger.addEventListener('click', () => {
+    const wasOpen = openPanel === entry && !entry.panel.hidden;
+    closePanel(wasOpen);
+    if (wasOpen) return;
+    openPanel = entry;
+    entry.panel.hidden = false;
+    entry.panel.inert = false;
+    entry.trigger.setAttribute('aria-expanded', 'true');
+    entry.panel.querySelector('input:not([disabled]),a[href],button:not([disabled])')?.focus();
   }));
-  document.addEventListener('click', (event) => {
-    if (!event.target.closest('.topbar-tool')) closePanels();
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && panelTriggers.some((trigger) => trigger.getAttribute('aria-expanded') === 'true')) {
-      event.preventDefault();
-      closePanels(true);
-    }
-  });
+  const closePanelOnExit = (event) => {
+    if (openPanel && !openPanel.tool.contains(event.target)) closePanel();
+  };
+  document.addEventListener('click', closePanelOnExit);
+  document.addEventListener('focusin', closePanelOnExit);
 
   const sidebar = document.querySelector('.sidebar');
   const backdrop = document.querySelector('.drawer-backdrop');
   const openDrawer = document.querySelector('[data-drawer-open]');
-  const closeDrawerButtons = document.querySelectorAll('[data-drawer-close]');
   const collapseSidebar = document.querySelector('[data-sidebar-collapse]');
   const drawerQuery = window.matchMedia('(max-width: 767.98px)');
   const railQuery = window.matchMedia('(min-width: 768px) and (max-width: 1199.98px)');
+  const drawerSiblings = document.querySelectorAll('.app-main, .app-scripts, .skip-link, .study-assistant, .toast-region');
+  let drawerOpen = false;
 
-  function closeSidebar() {
-    sidebar?.classList.remove('mobile-open');
-    body.classList.remove('sidebar-expanded');
-    backdrop?.classList.remove('show');
-    openDrawer?.setAttribute('aria-expanded', 'false');
-    if (drawerQuery.matches) openDrawer?.focus();
+  function updateSidebar() {
+    const mobile = drawerQuery.matches;
+    const rail = railQuery.matches;
+    sidebar?.classList.toggle('mobile-open', mobile && drawerOpen);
+    body.classList.toggle('sidebar-expanded', rail && drawerOpen);
+    body.classList.toggle('drawer-active', drawerOpen);
+    backdrop?.classList.toggle('show', drawerOpen);
+    openDrawer?.setAttribute('aria-expanded', String(drawerOpen));
+    collapseSidebar?.setAttribute('aria-expanded',
+      String(rail ? drawerOpen : !body.classList.contains('sidebar-collapsed')));
+    if (sidebar) {
+      sidebar.inert = mobile && !drawerOpen;
+      if (drawerOpen) {
+        sidebar.setAttribute('role', 'dialog');
+        sidebar.setAttribute('aria-modal', 'true');
+      } else {
+        sidebar.setAttribute('role', 'complementary');
+        sidebar.removeAttribute('aria-modal');
+      }
+    }
+    drawerSiblings.forEach((element) => { element.inert = drawerOpen; });
+  }
+
+  function closeDrawer(restoreFocus = true) {
+    if (!drawerOpen) return;
+    drawerOpen = false;
+    updateSidebar();
+    if (restoreFocus) openDrawer?.focus();
   }
 
   openDrawer?.addEventListener('click', () => {
-    if (drawerQuery.matches) {
-      sidebar?.classList.add('mobile-open');
-      backdrop?.classList.add('show');
-      openDrawer.setAttribute('aria-expanded', 'true');
-      sidebar?.querySelector('a')?.focus();
-    } else if (railQuery.matches) {
-      const expanded = body.classList.toggle('sidebar-expanded');
-      openDrawer.setAttribute('aria-expanded', String(expanded));
-      backdrop?.classList.toggle('show', expanded);
-    }
+    if (!sidebar || (!drawerQuery.matches && !railQuery.matches)) return;
+    closePanel();
+    drawerOpen = true;
+    updateSidebar();
+    const close = sidebar.querySelector(drawerQuery.matches ? '.mobile-close' : '[data-sidebar-collapse]');
+    close?.focus();
   });
-
-  closeDrawerButtons.forEach((element) => element.addEventListener('click', closeSidebar));
+  document.querySelectorAll('[data-drawer-close]').forEach((element) => {
+    element.addEventListener('click', () => closeDrawer());
+  });
   sidebar?.addEventListener('click', (event) => {
-    if (event.target.closest('a[href]') && (drawerQuery.matches || railQuery.matches)) closeSidebar();
+    const link = event.target.closest('a[href]');
+    if (link && !link.target && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+      closeDrawer();
+    }
   });
   collapseSidebar?.addEventListener('click', () => {
     if (railQuery.matches) {
-      const expanded = body.classList.toggle('sidebar-expanded');
-      collapseSidebar.setAttribute('aria-expanded', String(expanded));
-      backdrop?.classList.toggle('show', expanded);
+      closeDrawer();
       return;
     }
-    body.classList.toggle('sidebar-collapsed');
-    localStorage.setItem('studhub-sidebar-collapsed', String(body.classList.contains('sidebar-collapsed')));
+    const collapsed = body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('studhub-sidebar-collapsed', String(collapsed));
+    updateSidebar();
   });
-
-  if (window.matchMedia('(min-width: 1200px)').matches
-      && localStorage.getItem('studhub-sidebar-collapsed') === 'true') {
+  if (localStorage.getItem('studhub-sidebar-collapsed') === 'true') {
     body.classList.add('sidebar-collapsed');
   }
+  const syncSidebar = () => {
+    const wasFocused = sidebar?.contains(document.activeElement);
+    closeDrawer(false);
+    updateSidebar();
+    if (wasFocused && sidebar.inert) openDrawer?.focus();
+    if (wasFocused && document.activeElement.getClientRects().length === 0) {
+      sidebar.querySelector('.brand')?.focus();
+    }
+  };
+  drawerQuery.addEventListener('change', syncSidebar);
+  railQuery.addEventListener('change', syncSidebar);
+  updateSidebar();
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && (sidebar?.classList.contains('mobile-open') || body.classList.contains('sidebar-expanded'))) {
-      closeSidebar();
+    if (event.defaultPrevented) return;
+    const panelVisible = openPanel && !openPanel.panel.hidden;
+    if (event.key === 'Escape' && (panelVisible || drawerOpen)) {
+      event.preventDefault();
+      if (panelVisible) closePanel(true);
+      else closeDrawer();
+      return;
+    }
+    if (event.key !== 'Tab' || !drawerOpen || !sidebar) return;
+    const focusable = [...sidebar.querySelectorAll('a[href],button:not([disabled])')]
+      .filter((element) => element.getClientRects().length > 0);
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
     }
   });
 
   const path = window.location.pathname;
   document.querySelectorAll('[data-nav]').forEach((link) => {
     const route = link.dataset.nav;
-    const active = route === '/' ? path === '/' : path.startsWith(route);
+    const active = path === route || (route !== '/' && path.startsWith(route + '/'));
     link.classList.toggle('active', active);
     if (active) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
@@ -179,7 +232,6 @@
       const show = input.type === 'password';
       input.type = show ? 'text' : 'password';
       button.innerHTML = `<i class="bi ${show ? 'bi-eye-slash' : 'bi-eye'}" aria-hidden="true"></i>`;
-      button.setAttribute('aria-pressed', String(show));
       button.setAttribute('aria-label', show ? msg('passwordHide', 'Скрыть пароль') : msg('passwordShow', 'Показать пароль'));
       button.title = show ? msg('passwordHide', 'Скрыть пароль') : msg('passwordShow', 'Показать пароль');
     });
@@ -215,7 +267,10 @@
       const error = document.querySelector('[data-confirm-error]');
       const mismatch = input.value.length > 0 && input.value !== password?.value;
       input.setCustomValidity(mismatch ? msg('passwordMismatch', 'Пароли не совпадают') : '');
-      input.classList.toggle('is-invalid', mismatch);
+      const invalid = mismatch || (input.classList.contains('is-invalid') && !input.validity.valid);
+      input.classList.toggle('is-invalid', invalid);
+      if (invalid) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
       if (error) error.textContent = mismatch ? msg('passwordMismatch', 'Пароли не совпадают') : '';
     };
     input.addEventListener('input', update);
@@ -223,33 +278,18 @@
   });
 
   document.querySelectorAll('[data-validate-form]').forEach((form) => {
-    form.addEventListener('focusout', (event) => {
-      if (event.target.matches('input,select,textarea')) {
-        event.target.classList.toggle('is-invalid', !event.target.checkValidity());
-      }
-    });
-    form.addEventListener('submit', (event) => {
-      const invalid = [...form.querySelectorAll('input,select,textarea')].find((field) => !field.disabled && !field.checkValidity());
-      if (invalid) {
-        event.preventDefault();
-        invalid.classList.add('is-invalid');
-        invalid.focus();
-        invalid.reportValidity();
-        return;
-      }
-      setLoading(form);
-    });
-  });
-
-  function setLoading(form) {
-    const button = form.querySelector('button[type="submit"]');
-    if (!button) return;
-    button.disabled = true;
-    button.querySelector('.spinner-border')?.classList.remove('d-none');
-  }
-
-  document.querySelectorAll('[data-submit-loading]').forEach((form) => {
-    form.addEventListener('submit', () => setLoading(form));
+    const validateField = (field) => {
+      const invalid = !field.validity.valid;
+      field.classList.toggle('is-invalid', invalid);
+      if (invalid) field.setAttribute('aria-invalid', 'true');
+      else field.removeAttribute('aria-invalid');
+    };
+    form.addEventListener('invalid', (event) => validateField(event.target), true);
+    const revalidate = (event) => {
+      if (event.target.matches('input.is-invalid,select.is-invalid,textarea.is-invalid')) validateField(event.target);
+    };
+    form.addEventListener('input', revalidate);
+    form.addEventListener('change', revalidate);
   });
 
   let dirtyForm = false;
@@ -326,11 +366,15 @@
     const setView = (view, save = true) => {
       courseGrid.classList.toggle('d-none', view !== 'grid');
       courseTable?.classList.toggle('d-none', view !== 'table');
-      document.querySelectorAll('[data-course-view]').forEach((button) => button.classList.toggle('active', button.dataset.courseView === view));
+      document.querySelectorAll('[data-course-view]').forEach((button) => {
+        const active = button.dataset.courseView === view;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
       if (save) localStorage.setItem('studhub-course-view', view);
     };
     document.querySelectorAll('[data-course-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.courseView)));
-    setView(localStorage.getItem('studhub-course-view') || 'grid', false);
+    setView(localStorage.getItem('studhub-course-view') === 'table' ? 'table' : 'grid', false);
   }
 
   const assignmentList = document.querySelector('[data-assignment-list]');
@@ -342,7 +386,10 @@
     const prioritySelect = document.querySelector('[data-priority-filter]');
     const filterEmpty = document.querySelector('.filter-empty');
     const initialEmpty = document.querySelector('.list-empty');
-    let statusFilter = 'all';
+    const filterButtons = [...document.querySelectorAll('[data-assignment-filter]')];
+    const requestedFilter = params.get('filter');
+    let statusFilter = filterButtons.some((button) => button.dataset.assignmentFilter === requestedFilter)
+      ? requestedFilter : 'all';
     const now = new Date(); now.setHours(0, 0, 0, 0);
     let calendarMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const calendarGrid = document.querySelector('[data-calendar-grid]');
@@ -404,7 +451,7 @@
         tab.tabIndex = active ? 0 : -1;
       });
       calendarPanels.forEach((panel) => { panel.hidden = panel.dataset.assignmentViewPanel !== view; });
-      if (filterEmpty) filterEmpty.classList.toggle('d-none', view !== 'list' || rows.some((row) => !row.classList.contains('d-none')));
+      if (filterEmpty) filterEmpty.classList.toggle('d-none', view !== 'list' || !rows.length || rows.some((row) => !row.classList.contains('d-none')));
       if (view === 'calendar') renderCalendar();
     };
     calendarTabs.forEach((tab, index) => {
@@ -454,16 +501,18 @@
       if (initialEmpty) initialEmpty.classList.toggle('d-none', rows.length > 0);
       if (!document.querySelector('[data-assignment-view-panel="calendar"]')?.hidden) renderCalendar();
     };
-    document.querySelectorAll('[data-assignment-filter]').forEach((button) => button.addEventListener('click', () => {
+    const syncFilterButtons = () => filterButtons.forEach((button) => {
+      const active = button.dataset.assignmentFilter === statusFilter;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    filterButtons.forEach((button) => button.addEventListener('click', () => {
       statusFilter = button.dataset.assignmentFilter;
-      document.querySelectorAll('[data-assignment-filter]').forEach((item) => { item.classList.toggle('active', item === button); item.setAttribute('aria-pressed', String(item === button)); });
+      syncFilterButtons();
       applyFilters();
     }));
     search?.addEventListener('input', debounce(applyFilters));
-    if (params.has('search') && search) {
-      search.value = params.get('search') || '';
-      applyFilters();
-    }
+    if (params.has('search') && search) search.value = params.get('search') || '';
     courseSelect?.addEventListener('change', applyFilters);
     typeSelect?.addEventListener('change', applyFilters);
     prioritySelect?.addEventListener('change', applyFilters);
@@ -473,8 +522,9 @@
       if (courseSelect) courseSelect.value = '';
       if (prioritySelect) prioritySelect.value = '';
       if (typeSelect) typeSelect.value = '';
-      document.querySelectorAll('[data-assignment-filter]').forEach((item) => { item.classList.toggle('active', item.dataset.assignmentFilter === 'all'); item.setAttribute('aria-pressed', String(item.dataset.assignmentFilter === 'all')); });
+      syncFilterButtons();
       applyFilters();
+      search?.focus();
     });
     const sortBy = (key, ascending) => {
       rows.sort((a, b) => {
@@ -495,8 +545,9 @@
       sortBy(button.dataset.sort, ascending);
       applyFilters();
     }));
-    if (courseSelect && new URLSearchParams(location.search).has('course')) applyFilters();
-    if (new URLSearchParams(location.search).get('view') === 'calendar') setAssignmentView('calendar');
+    syncFilterButtons();
+    applyFilters();
+    if (params.get('view') === 'calendar') setAssignmentView('calendar');
   }
 
   function animateDelete(form, row) {
@@ -532,6 +583,12 @@
   if (userList) {
     const errorBox = document.querySelector('[data-user-error]');
     const empty = document.querySelector('[data-user-empty]');
+    const userLoading = document.querySelector('[data-user-loading]');
+    const userRetry = document.querySelector('[data-user-retry]');
+    const userNoMatch = document.querySelector('[data-user-no-match]');
+    const userSearch = document.querySelector('[data-user-search]');
+    const userRole = document.querySelector('[data-user-role-filter]');
+    const addUserButtons = document.querySelectorAll('[data-add-user]');
     const form = document.querySelector('[data-user-form]');
     const formError = document.querySelector('[data-user-form-error]');
     const modalTitle = document.querySelector('[data-user-modal-title]');
@@ -540,12 +597,27 @@
     const deleteModal = document.getElementById('deleteUserModal');
     const selfId = body.dataset.currentUserId;
     let users = [];
+    let usersLoaded = false;
+    let usersLoading = false;
     let deleteTarget = null;
     const userModal = window.bootstrap?.Modal.getOrCreateInstance(modal);
     const confirmDeleteModal = window.bootstrap?.Modal.getOrCreateInstance(deleteModal);
+    let userAction;
+    const rememberUserAction = (row, selector) => {
+      userAction = { row: row.dataset.id, selector };
+    };
+    const restoreUserAction = () => {
+      if (!userAction) return;
+      const selector = 'tr[data-id="' + CSS.escape(userAction.row) + '"] ' + userAction.selector;
+      (userList.querySelector(selector) || userSearch)?.focus();
+      userAction = null;
+    };
+    modal?.addEventListener('hidden.bs.modal', restoreUserAction);
+    deleteModal?.addEventListener('hidden.bs.modal', restoreUserAction);
 
     const addCell = (row, label, child, className = '') => {
       const cell = document.createElement('td');
+      cell.setAttribute('role', 'cell');
       cell.dataset.label = label;
       if (className) cell.className = className;
       if (child instanceof Node) cell.append(child); else cell.textContent = child;
@@ -560,13 +632,16 @@
       button.dataset[action === 'edit' ? 'editUser' : 'deleteUser'] = '';
       return button;
     };
-    const renderUsers = (filter = '') => {
-      const query = filter.toLocaleLowerCase('ru');
-      const role = document.querySelector('[data-user-role-filter]')?.value || '';
+    const renderUsers = () => {
+      if (!usersLoaded) return;
+      const query = (userSearch?.value || '').trim().toLocaleLowerCase('ru');
+      const role = userRole?.value || '';
       const filtered = users.filter((user) => `${user.fullName} ${user.email}`.toLocaleLowerCase('ru').includes(query) && (!role || user.role === role));
       userList.replaceChildren();
       filtered.forEach((user) => {
-        const row = document.createElement('tr'); row.dataset.id = user.id;
+        const row = document.createElement('tr');
+        row.setAttribute('role', 'row');
+        row.dataset.id = user.id;
         const identity = document.createElement('span'); identity.className = 'user-identity';
         const avatar = document.createElement('span'); avatar.className = 'user-avatar'; avatar.textContent = (user.fullName || '?').trim().slice(0, 1).toLocaleUpperCase('ru');
         const name = document.createElement('span'); name.className = 'user-name'; name.textContent = user.fullName;
@@ -583,23 +658,49 @@
         addCell(row, msg('usersActions', 'Действия'), actions, 'row-actions');
         userList.append(row);
       });
-      empty?.classList.toggle('d-none', filtered.length > 0);
+      empty?.classList.toggle('d-none', users.length !== 0);
+      userNoMatch?.classList.toggle('d-none', users.length === 0 || filtered.length > 0);
     };
-    const loadUsers = async () => {
+
+    const loadUsers = async (fromRetry = false) => {
+      if (usersLoading) return;
+      usersLoading = true;
+      usersLoaded = false;
+      addUserButtons.forEach((button) => { button.disabled = true; });
+      userLoading?.removeAttribute('hidden');
+      userList.setAttribute('aria-busy', 'true');
+      errorBox.classList.add('d-none');
+      if (userRetry) userRetry.disabled = true;
       try {
         const response = await fetch('/api/users', { headers: { Accept: 'application/json', [csrfHeader]: csrfToken } });
-        if (!response.ok) throw new Error(body.dataset.usersError);
-        users = await response.json();
-        renderUsers(document.querySelector('[data-user-search]')?.value || '');
-      } catch (error) {
-        errorBox.textContent = error.message || body.dataset.usersError;
-        errorBox.classList.remove('d-none');
+        if (!response.ok) throw new Error();
+        const result = await response.json();
+        if (!Array.isArray(result)) throw new Error();
+        users = result;
+        usersLoaded = true;
+        addUserButtons.forEach((button) => { button.disabled = false; });
+        renderUsers();
+        userRetry?.setAttribute('hidden', '');
+        if (fromRetry) userSearch?.focus();
+      } catch {
         userList.replaceChildren();
+        errorBox.textContent = body.dataset.usersError;
+        errorBox.classList.remove('d-none');
+        userRetry?.removeAttribute('hidden');
+      } finally {
+        usersLoading = false;
+        userLoading?.setAttribute('hidden', '');
+        userList.removeAttribute('aria-busy');
+        if (userRetry) {
+          userRetry.disabled = false;
+          if (fromRetry && !usersLoaded) userRetry.focus();
+        }
       }
     };
     loadUsers();
-    document.querySelector('[data-user-search]')?.addEventListener('input', debounce((event) => renderUsers(event.target.value)));
-    document.querySelector('[data-user-role-filter]')?.addEventListener('change', () => renderUsers(document.querySelector('[data-user-search]')?.value || ''));
+    userRetry?.addEventListener('click', () => loadUsers(true));
+    userSearch?.addEventListener('input', debounce(renderUsers));
+    userRole?.addEventListener('change', renderUsers);
 
     document.querySelectorAll('[data-add-user]').forEach((button) => button.addEventListener('click', () => {
       form.reset(); form.elements.id.value = ''; passwordField.classList.remove('d-none'); form.elements.password.required = true;
@@ -614,11 +715,13 @@
       const user = users.find((item) => String(item.id) === row?.dataset.id);
       if (!user) return;
       if (edit) {
+        rememberUserAction(row, '[data-edit-user]');
         form.reset(); form.elements.id.value = user.id; form.elements.fullName.value = user.fullName; form.elements.email.value = user.email; form.elements.role.value = user.role;
         passwordField.classList.add('d-none'); form.elements.password.required = false; modalTitle.textContent = msg('usersEdit', 'Редактировать пользователя');
         formError.classList.add('d-none'); form.dataset.editingId = user.id; userModal?.show();
       }
       if (remove && String(user.id) !== String(selfId)) {
+        rememberUserAction(row, '[data-delete-user]');
         deleteTarget = user; document.querySelector('[data-user-delete-error]').classList.add('d-none'); document.querySelector('[data-user-delete-message]').textContent = msg('usersDeleteConfirm', 'Удалить пользователя «{0}»?').replace('{0}', user.fullName); confirmDeleteModal?.show();
       }
     });
@@ -639,7 +742,7 @@
         if (!response.ok) throw new Error(result?.error || body.dataset.usersRequestError);
         const saved = result;
         users = editingId ? users.map((user) => user.id === saved.id ? saved : user) : [...users, saved];
-        renderUsers(document.querySelector('[data-user-search]')?.value || '');
+        renderUsers();
         userList.querySelector(`tr[data-id="${CSS.escape(String(saved.id))}"]`)?.classList.add('row-highlight');
         userModal?.hide(); toast(msg('usersSaveSuccess', 'Данные пользователя сохранены.'));
       } catch (error) {
@@ -664,7 +767,7 @@
           }
           throw new Error(body.dataset.usersRequestError);
         }
-        users = users.filter((user) => user.id !== deleteTarget.id); renderUsers(document.querySelector('[data-user-search]')?.value || '');
+        users = users.filter((user) => user.id !== deleteTarget.id); renderUsers();
         confirmDeleteModal?.hide(); toast(msg('usersDeleteSuccess', 'Пользователь удалён.')); deleteTarget = null;
       } catch (error) {
         const errorBox = document.querySelector('[data-user-delete-error]');
@@ -757,24 +860,34 @@
     // AJAX forms own their pending/success/error states. Never invent success here.
     queueMicrotask(() => {
       if (event.defaultPrevented || form.method.toLowerCase() !== 'post' || !form.isConnected) return;
-      const status = document.createElement('span');
-      status.className = 'submit-feedback';
-      status.setAttribute('role', 'status');
+      if (pending.has(form)) return;
+      const next = form.nextElementSibling;
+      const existingStatus = next?.matches('[data-submit-status]') ? next : null;
+      const status = existingStatus || document.createElement('span');
+      if (!existingStatus) {
+        status.setAttribute('role', 'status');
+        form.insertAdjacentElement('afterend', status);
+      }
+      status.classList.add('submit-feedback');
       status.textContent = ({ru:'Отправляем…',en:'Sending…',kk:'Жіберілуде…'})[root.lang] || 'Отправляем…';
-      form.setAttribute('aria-busy', 'true');
       const button = event.submitter;
-      // Keep submitter enabled: its name/value may be part of the native request.
-      if (button) button.insertAdjacentElement('afterend', status); else form.append(status);
-      pending.set(form, status);
+      pending.set(form, {status, existingStatus, button,
+        busy: form.getAttribute('aria-busy'), buttonDisabled: button?.getAttribute('aria-disabled')});
+      form.setAttribute('aria-busy', 'true');
+      // Keep the native submitter enabled so its name/value is included in the request.
+      button?.setAttribute('aria-disabled', 'true');
     });
   });
   window.addEventListener('pageshow', () => {
-    for (const [form, status] of pending) {
-      form.removeAttribute('aria-busy'); status.remove();
-      form.querySelectorAll('button[type="submit"]').forEach(button => {
-        button.disabled = false;
-        button.querySelector('.spinner-border')?.classList.add('d-none');
-      });
+    for (const [form, state] of pending) {
+      if (state.busy === null) form.removeAttribute('aria-busy');
+      else form.setAttribute('aria-busy', state.busy);
+      if (state.buttonDisabled === null) state.button?.removeAttribute('aria-disabled');
+      else if (state.button) state.button.setAttribute('aria-disabled', state.buttonDisabled);
+      if (state.existingStatus) {
+        state.status.textContent = '';
+        state.status.classList.remove('submit-feedback');
+      } else state.status.remove();
     }
     pending.clear();
   });

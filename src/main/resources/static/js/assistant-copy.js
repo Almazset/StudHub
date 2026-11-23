@@ -12,6 +12,8 @@
     explainHint:['Спросите о теме или непонятном фрагменте лекции. Разберём его по шагам и на примере.','Ask about a topic or a difficult passage. We will break it down with an example.','Тақырып немесе дәрістің түсініксіз бөлігі туралы сұраңыз. Оны мысалмен, қадамдап түсіндіремін.'],
     tasksHint:['Укажите тему или приложите лекцию. Подготовлю практические задания разной сложности.','Enter a topic or attach a lecture. Get practice tasks at different difficulty levels.','Тақырыпты жазыңыз немесе дәрісті тіркеңіз. Әртүрлі деңгейдегі практикалық тапсырмалар дайындаймын.'],
     guideHint:['Помогу найти нужный раздел и покажу, как пользоваться StudHub. Гид работает без подключения ИИ.','Find your way around StudHub with helpful links and a guided tour. No AI connection is needed.','StudHub бөлімдерін тауып, пайдалануды үйреніңіз. Нұсқаулық ЖИ қосылмай-ақ жұмыс істейді.'],
+    modes:['Режим помощника','Assistant mode','Көмекші режимі'],
+    transcript:['Переписка с помощником','Conversation with the assistant','Көмекшімен хат алмасу'],
     attach:['Прикрепить лекцию','Attach lecture','Дәрісті тіркеу'], drop:['или перетащите файлы сюда','or drop files here','немесе файлдарды осында сүйреңіз'],
     formats:['PDF, DOCX, PPTX, TXT, MD, JPG, PNG · до 3 файлов','PDF, DOCX, PPTX, TXT, MD, JPG, PNG · up to 3 files','PDF, DOCX, PPTX, TXT, MD, JPG, PNG · 3 файлға дейін'],
     limits:['До 8 МБ на файл, всего до 12 МБ.','Up to 8 MB per file and 12 MB total.','Әр файл 8 МБ дейін, барлығы 12 МБ дейін.'],

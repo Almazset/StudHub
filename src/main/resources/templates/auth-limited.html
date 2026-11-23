@@ -9,8 +9,8 @@
 <script th:src="${base + '/js/auth-theme.js'}"></script></head>
 <body class="auth-page auth-refined"><main class="auth-layout" id="main-content"><section class="auth-content"><div class="auth-card">
 <div class="auth-wordmark">StudHub</div><h1>Слишком много попыток</h1>
-<p role="alert">Вход или регистрация временно ограничены. Повторите попытку через <strong th:text="${seconds}">300</strong> сек.</p>
-<p class="muted-copy">Повторные нажатия не ускорят ожидание. Введённые пароль и код не сохранены в этой форме.</p>
+<p class="auth-alert alert alert-danger" role="alert">Вход или регистрация временно ограничены. Повторите попытку через <strong th:text="${seconds}">300</strong> сек.</p>
+<p class="muted-copy auth-limited-note">Повторные нажатия не ускорят ожидание. Введённые пароль и код не сохранены в этой форме.</p>
 <a class="btn btn-primary btn-auth" th:href="${base + '/login'}">Вернуться ко входу</a>
 <p class="auth-switch"><a th:href="${base + '/register'}">Вернуться к регистрации</a></p>
 </div></section></main></body></html>

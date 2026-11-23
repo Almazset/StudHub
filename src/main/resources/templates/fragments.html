@@ -23,19 +23,20 @@
   <link rel="stylesheet" th:href="@{/css/themes.css}">
   <link rel="stylesheet" th:href="@{/css/news.css}">
   <link rel="stylesheet" th:href="@{/css/notifications.css}">
+  <link rel="stylesheet" th:href="@{/css/page-audit.css}">
 </th:block>
 
 <a th:fragment="skip" class="skip-link" href="#main-content" th:text="#{nav.skip}">Перейти к содержимому</a>
 
-<aside th:fragment="sidebar" class="sidebar" id="appSidebar" th:aria-label="#{nav.primary}">
+<div th:fragment="sidebar" class="sidebar" role="complementary" id="appSidebar" th:aria-label="#{nav.primary}">
   <div class="sidebar-brand-row">
     <a class="brand" th:href="@{/}" th:aria-label="#{app.name} + ' — ' + #{nav.dashboard}">
       <span class="brand-mark">S</span><span class="brand-name" th:text="#{app.name}">StudHub</span>
     </a>
-    <button class="sidebar-collapse" type="button" data-sidebar-collapse th:aria-label="#{nav.collapse}" aria-expanded="true" th:title="#{nav.collapse}"><i class="bi bi-layout-sidebar-inset"></i></button>
+    <button class="sidebar-collapse" type="button" aria-controls="appSidebar" data-sidebar-collapse th:aria-label="#{nav.collapse}" aria-expanded="true" th:title="#{nav.collapse}"><i class="bi bi-layout-sidebar-inset"></i></button>
     <button class="mobile-close" type="button" data-drawer-close th:aria-label="#{action.close}"><i class="bi bi-x-lg"></i></button>
   </div>
-  <nav class="sidebar-nav">
+  <nav class="sidebar-nav" th:aria-label="#{nav.primary}">
     <a class="sidebar-link" data-nav="/news" th:href="@{/news}" aria-label="Новости" title="Новости"><i class="bi bi-newspaper"></i><span>Новости</span></a>
     <p class="sidebar-label" th:text="#{nav.workspace}">Рабочее пространство</p>
     <a class="sidebar-link" data-nav="/" th:href="@{/}" th:aria-label="#{nav.dashboard}" th:title="#{nav.dashboard}"><i class="bi bi-grid-1x2"></i><span th:text="#{nav.dashboard}">Личный кабинет</span></a>
@@ -49,7 +50,7 @@
     <p class="sidebar-label sidebar-label-secondary" th:text="#{nav.system}">Система</p>
     <a class="sidebar-link" th:href="@{/swagger-ui.html}" target="_blank" rel="noopener" th:aria-label="#{nav.api}" th:title="#{nav.api}"><i class="bi bi-braces-asterisk"></i><span th:text="#{nav.api}">API документация</span><i class="bi bi-box-arrow-up-right sidebar-external"></i></a>
   </nav>
-</aside>
+</div>
 
 <header th:fragment="topbar(pageTitle)" class="topbar">
   <div class="topbar-left">
@@ -59,9 +60,9 @@
   <div class="topbar-actions">
     <div class="topbar-tool">
       <button class="icon-button" type="button" data-panel-trigger="search" aria-controls="topbarSearch" aria-expanded="false" th:aria-label="#{action.search}" th:title="#{action.search}"><i class="bi bi-search"></i></button>
-      <div class="topbar-popover search-popover" id="topbarSearch" data-panel="search" hidden>
+      <div class="topbar-popover search-popover" id="topbarSearch" data-panel="search" hidden inert>
         <h2 th:text="#{topbar.searchTitle}">Поиск</h2>
-        <form class="global-search-form" th:action="@{/assignments}" method="get"><label for="globalSearch" th:text="#{topbar.searchHint}">Поиск по заданиям и курсам</label><input id="globalSearch" name="search" type="search" autocomplete="off" required th:placeholder="#{topbar.searchPlaceholder}"><div class="global-search-actions"><button type="submit" th:text="#{topbar.searchAssignments}">В заданиях</button><button type="submit" th:formaction="@{/courses}" th:text="#{topbar.searchCourses}">В курсах</button></div></form>
+        <form class="global-search-form" th:action="@{/assignments}" method="get"><label for="globalSearch" th:text="#{topbar.searchHint}">Поиск по заданиям и курсам</label><input id="globalSearch" name="search" type="search" autocomplete="off" required th:placeholder="#{topbar.searchPlaceholder}"><div class="global-search-actions"><button class="btn btn-primary" type="submit" th:text="#{topbar.searchAssignments}">В заданиях</button><button class="btn btn-light" type="submit" th:formaction="@{/courses}" th:text="#{topbar.searchCourses}">В курсах</button></div></form>
       </div>
     </div>
     <div class="topbar-tool" data-notification-inbox>
@@ -91,7 +92,7 @@
     </div>
     <div class="topbar-tool">
       <button class="icon-button" type="button" data-panel-trigger="settings" aria-controls="topbarSettings" aria-expanded="false" th:aria-label="#{topbar.settings}" th:title="#{topbar.settings}"><i class="bi bi-gear"></i></button>
-      <div class="topbar-popover settings-popover" id="topbarSettings" data-panel="settings" hidden><h2 th:text="#{topbar.settings}">Настройки</h2><button class="popover-action theme-toggle" type="button" data-theme-toggle><i class="bi bi-moon-stars"></i><span th:text="#{theme.toggle}">Переключить тему</span></button><a class="popover-action" th:href="@{/profile}"><i class="bi bi-person"></i><span th:text="#{profile.title}">Настройки профиля</span></a><form class="settings-logout" data-settings-logout th:if="${currentUser != null}" th:action="@{/logout}" method="post"><button class="popover-action" type="submit"><i class="bi bi-box-arrow-left"></i><span th:text="#{nav.logout}">Выйти</span></button></form></div>
+      <div class="topbar-popover settings-popover" id="topbarSettings" data-panel="settings" hidden inert><h2 th:text="#{topbar.settings}">Настройки</h2><button class="popover-action theme-toggle" type="button" data-theme-toggle><i class="bi bi-moon-stars"></i><span th:text="#{theme.toggle}">Переключить тему</span></button><a class="popover-action" th:href="@{/settings}"><i class="bi bi-sliders" aria-hidden="true"></i><span th:text="#{topbar.settings}">Настройки</span></a><a class="popover-action" th:href="@{/profile}"><i class="bi bi-person"></i><span th:text="#{profile.title}">Настройки профиля</span></a><form class="settings-logout" data-settings-logout th:if="${currentUser != null}" th:action="@{/logout}" method="post"><button class="popover-action" type="submit"><i class="bi bi-box-arrow-left"></i><span th:text="#{nav.logout}">Выйти</span></button></form></div>
     </div>
     <a class="topbar-profile" th:if="${currentUser != null}" th:href="@{/profile}" th:title="#{profile.title}">
       <span class="avatar" data-profile-avatar><img th:if="${currentUser.hasPhoto}" th:src="@{/api/settings/photo}" alt=""><span th:unless="${currentUser.hasPhoto}" th:text="${currentUser.displayName.substring(0,1).toUpperCase()}">A</span></span>

@@ -243,7 +243,14 @@
       render();
     }
     bell.addEventListener('click', () => { if (!panel.hidden) refreshInbox(true); });
-    retry.addEventListener('click', () => refreshInbox(true));
+    retry.addEventListener('click', async () => {
+      const hadFocus = document.activeElement === retry;
+      await refreshInbox(true);
+      if (hadFocus && retry.hidden && !panel.hidden
+          && (document.activeElement === retry || document.activeElement === document.body)) {
+        settings.focus({ preventScroll: true });
+      }
+    });
     readAll.addEventListener('click', () => markRead());
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) refreshInbox();
