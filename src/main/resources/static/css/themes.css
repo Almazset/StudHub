@@ -336,11 +336,10 @@ body[data-theme="light"] :is(.btn-light,.btn-outline-secondary,.chat-button):hov
 body[data-theme="light"] :is(.btn-primary,.chat-button.primary) { background:linear-gradient(180deg,#48404f,#332d3b); border-color:#332d3b; color:#fff; box-shadow:0 4px 9px #332d3b26,inset 0 1px 0 #ffffff24; }
 body[data-theme="light"] :is(.btn-primary,.chat-button.primary):is(:hover,:focus) { background:#231f29; border-color:#231f29; color:#fff; }
 body[data-theme="light"] .chat-button.danger { color:var(--danger); }
-body[data-theme="light"].app-shell :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea) { background:#fffefd; color:var(--ink); border-color:#b8afa3; }
+body[data-theme="light"].app-shell :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea):not(.chat-search input, .search-box input) { background:#fffefd; color:var(--ink); border-color:#b8afa3; }
 body[data-theme="light"].app-shell :is(input,select,textarea):focus { border-color:#75637e; box-shadow:var(--focus); }
 body[data-theme="light"].app-shell :is(input,select,textarea).is-invalid { border-color:var(--danger); }
 body[data-theme="light"].app-shell :is(input,textarea)::placeholder { color:#706970; opacity:1; }
-body[data-theme="light"].app-shell :is(a,button,summary):focus-visible { outline:2px solid #6c4785; outline-offset:3px; }
 body[data-theme="light"] .progress-ring { background:conic-gradient(#34765a var(--progress),#e0e6df 0); }
 body[data-theme="light"] .study-load-bar { background:linear-gradient(0deg,#bba4cd,#76548c); }
 body[data-theme="light"] .week-day.is-today { background:#fbedd5; border-color:#c7b38f; }
@@ -378,4 +377,167 @@ body .search-popover[hidden] { transform:none; clip-path:inset(0 0 85% 85% round
   body .search-popover,body .search-popover[hidden] { clip-path:none; transform:none; }
   body .search-popover { transition:opacity 120ms ease,display 120ms allow-discrete; }
   @starting-style { body .search-popover:not([hidden]) { clip-path:none; transform:none; } }
+}
+
+/* Shared controls and keyboard focus across the two workspace palettes. */
+:root, [data-theme="dark"] {
+  --keyboard-ring: #ebebeb;
+  --control-border: #7c7c7c;
+}
+
+[data-theme="light"] {
+  --keyboard-ring: #624071;
+  --control-border: #8e8378;
+}
+
+body :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--keyboard-ring);
+  outline-offset: 3px;
+}
+
+body .skip-link,
+body .skip-link:focus {
+  z-index: 1040;
+  background: var(--ink);
+  color: var(--surface);
+}
+
+#main-content {
+  scroll-margin-top: 90px;
+}
+
+#main-content:focus-visible {
+  outline-offset: -4px;
+}
+
+body :is(.btn, .icon-button, .notification-settings-link, .popover-action, .filter-pill) {
+  border-radius: var(--radius-control);
+}
+
+body .topbar-actions .icon-button,
+body .mobile-menu,
+body .topbar-profile {
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  color: var(--ink);
+  border-radius: var(--radius-control);
+}
+
+body[data-theme="light"] :is(.topbar-actions .icon-button, .mobile-menu, .topbar-profile) {
+  border-color: var(--control-border);
+}
+
+body .topbar-actions .icon-button:hover,
+body .topbar-profile:hover,
+body .mobile-menu:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+body .topbar-actions [data-panel-trigger][aria-expanded="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+body .topbar-left,
+body .topbar-left > div,
+body .topbar-profile,
+body .topbar-profile-name {
+  min-width: 0;
+}
+
+body .topbar-profile-name {
+  max-width: min(19vw, 170px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.app-shell :is(input, textarea)::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+body.app-shell :is(.field-group, .global-search-form) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):not(.is-invalid),
+body.app-shell :is(.search-box, .chat-search, .toolbar-controls select) {
+  border-color: var(--control-border);
+}
+
+body .global-search-actions .btn {
+  padding-inline: .65em;
+  white-space: normal;
+}
+
+body .settings-popover .popover-action {
+  margin-top: 5px;
+}
+
+body .topbar-popover {
+  overscroll-behavior: contain;
+}
+
+body.drawer-active {
+  overflow: hidden;
+}
+
+body .sidebar-nav {
+  overscroll-behavior: contain;
+}
+
+body .sidebar-link:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (min-width: 1200px) {
+  body.sidebar-collapsed .sidebar:hover { width: var(--rail-width); }
+  body.sidebar-collapsed .sidebar .sidebar-brand-row {
+    height: auto;
+    padding: 18px 0 4px;
+    display: grid;
+    justify-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  body.sidebar-collapsed .sidebar .sidebar-collapse { display: grid; margin: 0; }
+  body.sidebar-collapsed .sidebar:hover :is(.brand-name, .sidebar-label, .sidebar-link span, .sidebar-external) { display: none; }
+  body.sidebar-collapsed .sidebar:hover .sidebar-link { padding: 0; justify-content: center; }
+}
+
+@media (max-width: 1199.98px) {
+  body .mobile-menu { display: grid; place-items: center; flex: none; }
+}
+
+@media (max-width: 767.98px) {
+  body .topbar { padding-inline: 12px; }
+  body .topbar-actions { gap: 5px; }
+  body .topbar-actions .icon-button,
+  body .topbar-actions [data-panel-trigger="search"],
+  body .mobile-menu {
+    width: 38px;
+    height: 38px;
+  }
+  body .topbar-profile {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+  }
+  body .topbar-profile .avatar { width: 30px; height: 30px; }
+  body .topbar-popover { max-height: min(65vh, calc(100dvh - 72px)); }
+  #main-content { scroll-margin-top: 70px; }
+}
+
+@media (forced-colors: active) {
+  body :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .topbar-popover, body .sidebar {
+    transition: none !important;
+  }
 }

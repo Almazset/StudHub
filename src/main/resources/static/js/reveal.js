@@ -27,12 +27,13 @@
       if (!entry.isIntersecting || !element.isConnected || finished.has(element)) continue;
       observer.unobserve(element);
       finished.add(element);
-      // Keyboard navigation must never fade the focused control or its container.
-      if (document.documentElement.dataset.inputMethod === 'keyboard' || element.contains(document.activeElement)) continue;
+      // Keep content fully visible with reduced motion and during keyboard navigation.
+      if (reduced.matches || document.documentElement.dataset.inputMethod === 'keyboard' ||
+          element.contains(document.activeElement)) continue;
       const animation = element.animate([
-        {opacity:0, transform:reduced.matches ? 'none' : 'translateY(8px)'},
-        {opacity:1, transform:reduced.matches ? 'none' : 'translateY(0)'}
-      ], {duration:reduced.matches ? 120 : duration, delay:reduced.matches ? 0 : Math.min(order++ * 40,80), easing, fill:'backwards'});
+        {opacity:0, transform:'translateY(8px)'},
+        {opacity:1, transform:'translateY(0)'}
+      ], {duration, delay:Math.min(order++ * 40,80), easing, fill:'backwards'});
       active.set(element, animation);
       animation.onfinish = () => { if (active.get(element) === animation) active.delete(element); };
     }

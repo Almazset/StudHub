@@ -7,8 +7,6 @@
     if (!button) return;
     const sync = () => {
       const dark = document.documentElement.dataset.theme === 'dark';
-      button.setAttribute('aria-pressed', String(dark));
-      button.setAttribute('aria-label', dark ? 'Включить светлую тему' : 'Включить тёмную тему');
       button.querySelector('span').textContent = dark ? 'Светлая тема' : 'Тёмная тема';
     };
     sync();

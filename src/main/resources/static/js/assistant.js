@@ -8,18 +8,22 @@
   const icon = {summary:'file-earmark-text',flashcards:'cards',quiz:'question-circle',exam:'calendar-check',coach:'person-workspace',explain:'lightbulb',tasks:'list-check',guide:'compass'};
   root.dataset.userContent = '';
   root.innerHTML = `<div class="assistant-panel tutor-panel" id="studhubTutor" data-assistant-panel role="dialog" aria-modal="false" aria-labelledby="tutorHeading" hidden>
-    <header class="assistant-header"><span class="assistant-avatar"><i class="bi bi-stars" aria-hidden="true"></i></span><div><strong id="tutorHeading" data-ai-label="title"></strong><small data-ai-label="subtitle"></small></div><button type="button" class="assistant-close" data-ai-action="clear" data-ai-title="newChat"><i class="bi bi-arrow-counterclockwise"></i></button><button type="button" class="assistant-close" data-ai-action="library" data-ai-title="library" aria-pressed="false" ${preview ? 'hidden' : ''}><i class="bi bi-bookmark" aria-hidden="true"></i></button><button type="button" class="assistant-close tutor-expand" data-ai-action="expand" data-ai-title="expand"><i class="bi bi-arrows-fullscreen"></i></button><button type="button" class="assistant-close" data-ai-action="close" data-ai-title="close"><i class="bi bi-x-lg"></i></button></header>
-    <div class="tutor-modes" role="tablist" data-ai-title="title">${modes.map(mode => `<button type="button" role="tab" id="tutorTab-${mode}" aria-controls="tutorContent" data-ai-mode="${mode}"><i class="bi bi-${icon[mode]}" aria-hidden="true"></i><span data-ai-label="${mode}"></span></button>`).join('')}</div>
+    <header class="assistant-header"><span class="assistant-avatar"><i class="bi bi-stars" aria-hidden="true"></i></span><div><strong id="tutorHeading" data-ai-label="title" tabindex="-1"></strong><small data-ai-label="subtitle"></small></div><button type="button" class="assistant-close" data-ai-action="clear" data-ai-title="newChat"><i class="bi bi-arrow-counterclockwise"></i></button><button type="button" class="assistant-close" data-ai-action="library" data-ai-title="library" aria-pressed="false" ${preview ? 'hidden' : ''}><i class="bi bi-bookmark" aria-hidden="true"></i></button><button type="button" class="assistant-close tutor-expand" data-ai-action="expand" data-ai-title="expand" aria-pressed="false"><i class="bi bi-arrows-fullscreen"></i></button><button type="button" class="assistant-close" data-ai-action="close" data-ai-title="close"><i class="bi bi-x-lg"></i></button></header>
+    <div class="tutor-modes" role="radiogroup" data-ai-title="modes">${modes.map(mode => `<button type="button" role="radio" data-ai-mode="${mode}"><i class="bi bi-${icon[mode]}" aria-hidden="true"></i><span data-ai-label="${mode}"></span></button>`).join('')}</div>
     <div class="tutor-connection" data-ai-status role="status"></div>
-    <div class="tutor-context"><p data-ai-hint></p><div class="tutor-upload" data-ai-drop><label for="tutorFiles" class="tutor-upload-button"><i class="bi bi-paperclip"></i><span data-ai-label="attach"></span></label><span class="tutor-drop-copy" data-ai-label="drop"></span><input id="tutorFiles" type="file" multiple accept=".pdf,.docx,.pptx,.txt,.md,.jpg,.jpeg,.png" class="visually-hidden" data-ai-files><small data-ai-label="formats"></small><small data-ai-label="limits"></small></div><div class="tutor-files" data-ai-selected-files></div></div>
+    <div class="visually-hidden" data-ai-progress role="status"></div>
+    <div class="tutor-context"><p data-ai-hint></p><div class="tutor-upload" data-ai-drop><button type="button" class="tutor-upload-button" data-ai-attach><i class="bi bi-paperclip" aria-hidden="true"></i><span data-ai-label="attach"></span></button><span class="tutor-drop-copy" data-ai-label="drop"></span><input id="tutorFiles" type="file" multiple accept=".pdf,.docx,.pptx,.txt,.md,.jpg,.jpeg,.png" hidden data-ai-files><small data-ai-label="formats"></small><small data-ai-label="limits"></small></div><div class="tutor-files" data-ai-selected-files></div></div>
     <section class="tutor-library" data-ai-library aria-labelledby="tutorLibraryHeading" hidden><div class="tutor-library-heading"><h3 id="tutorLibraryHeading" data-ai-label="library"></h3><button type="button" class="tutor-text-button" data-ai-action="backToChat" data-ai-label="backToChat"></button></div><div data-ai-library-content></div></section>
-    <div id="tutorContent" class="assistant-messages" role="log" aria-live="polite" aria-relevant="additions" data-assistant-messages></div>
+    <div id="tutorContent" class="assistant-messages" role="log" aria-live="polite" aria-relevant="additions" data-ai-title="transcript" tabindex="0" data-assistant-messages></div>
     <div class="tutor-error" data-ai-error role="alert" hidden><span></span><button type="button" class="tutor-text-button" data-ai-action="retry" data-ai-label="retry" hidden></button></div>
     <form class="assistant-form tutor-composer" data-assistant-form><label class="visually-hidden" for="tutorInput" data-ai-label="input"></label><textarea id="tutorInput" name="message" rows="2" maxlength="6000" data-ai-input></textarea><div class="tutor-composer-actions"><small data-ai-count>0 / 6000</small><button type="button" class="tutor-stop" data-ai-action="stop" data-ai-label="stop" hidden></button><button type="submit" class="tutor-send" data-ai-title="send"><i class="bi bi-arrow-up"></i><span data-ai-label="send"></span></button></div><small class="tutor-disclosure" id="tutorDisclosure" data-ai-label="disclosure"></small><label class="tutor-consent" data-ai-consent-region hidden><input type="checkbox" data-ai-consent aria-describedby="tutorDisclosure"><span data-ai-label="fileConsent"></span></label></form>
   </div><button type="button" class="assistant-launcher" data-assistant-open aria-controls="studhubTutor" aria-expanded="false" data-ai-title="open"><i class="bi bi-stars" aria-hidden="true"></i><span data-ai-label="title"></span></button>`;
   const panel = root.querySelector('[data-assistant-panel]');
   const launcher = root.querySelector('[data-assistant-open]');
+  const heading = root.querySelector('#tutorHeading');
   const input = root.querySelector('[data-ai-input]');
+  const attachButton = root.querySelector('[data-ai-attach]');
+  const progress = root.querySelector('[data-ai-progress]');
   const fileInput = root.querySelector('[data-ai-files]');
   const messages = root.querySelector('[data-assistant-messages]');
   const form = root.querySelector('[data-assistant-form]');
@@ -61,28 +65,38 @@
   }
   async function status() {
     if (preview) { connection = 'preview'; configured = false; updateLabels(); return; }
-    if (!statusPromise) statusPromise = fetch('/api/assistant/status',{credentials:'same-origin',cache:'no-store'}).then(async response => {
-      if (response.redirected || response.headers.get('content-type')?.includes('text/html') || response.status === 401) { connection = 'login'; return; }
-      if (!response.ok) throw new Error('connection');
-      const result = await response.json(); configured = result.configured === true; connection = configured ? 'ready' : 'notConfigured';
-    }).catch(() => {
-      configured = false;
-      connection = 'connectionError';
-      statusPromise = null;
-    }).finally(updateLabels);
+    if (!statusPromise) {
+      connection = 'checking';
+      root.querySelector('[data-ai-status]').textContent = t(connection);
+      statusPromise = fetch('/api/assistant/status',{
+        credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)
+      }).then(async response => {
+        if (response.redirected || response.headers.get('content-type')?.includes('text/html') || response.status === 401) { connection = 'login'; return; }
+        if (!response.ok) throw new Error('connection');
+        const result = await response.json(); configured = result.configured === true; connection = configured ? 'ready' : 'notConfigured';
+      }).catch(() => {
+        configured = false;
+        connection = 'connectionError';
+        statusPromise = null;
+      }).finally(updateLabels);
+    }
     await statusPromise;
   }
   function open() {
     if (!library.hidden) switchLibrary(false);
-    panel.hidden = false; root.classList.add('is-open'); launcher.setAttribute('aria-expanded','true'); input.focus(); status(); }
+    panel.hidden = false;
+    root.classList.add('is-open');
+    launcher.setAttribute('aria-expanded','true');
+    heading.focus({preventScroll:true});
+    status();
+  }
   function close(restore = true) {
     if (!library.hidden) switchLibrary(false);
     panel.hidden = true; root.classList.remove('is-open'); launcher.setAttribute('aria-expanded','false'); if (restore) launcher.focus(); }
   function chooseMode(next) {
     if (!modes.includes(next) || busy || !library.hidden) return;
     mode = next; clearError();
-    root.querySelectorAll('[data-ai-mode]').forEach(button => { const active = button.dataset.aiMode === mode; button.setAttribute('aria-selected',String(active)); button.tabIndex = active ? 0 : -1; });
-    messages.setAttribute('aria-labelledby',`tutorTab-${mode}`);
+    root.querySelectorAll('[data-ai-mode]').forEach(button => { const active = button.dataset.aiMode === mode; button.setAttribute('aria-checked',String(active)); button.tabIndex = active ? 0 : -1; });
     root.querySelector('[data-ai-hint]').textContent = t(`${mode}Hint`);
     root.querySelector('[data-ai-drop]').hidden = mode === 'guide'; root.querySelector('[data-ai-selected-files]').hidden = mode === 'guide'; root.querySelector('.tutor-disclosure').hidden = mode === 'guide';
     updateFiles();
@@ -90,15 +104,23 @@
   }
   function updateFiles() {
     const region = root.querySelector('[data-ai-selected-files]');
+    const focusedIndex = Array.from(region.querySelectorAll('button')).indexOf(document.activeElement);
     region.replaceChildren();
     consentRegion.hidden = mode === 'guide' || files.length === 0;
     consent.disabled = busy;
     files.forEach((file,index) => {
       const size = file.size < 1024*1024 ? `${(file.size/1024).toFixed(1)} KB` : `${(file.size/1024/1024).toFixed(2)} MB`;
-      const chip = node('div','tutor-file'); chip.append(node('i','bi bi-file-earmark-text'),node('span','',file.name),node('small','',size));
+      const chip = node('div','tutor-file');
+      const name = node('span','',file.name);
+      name.title = file.name;
+      chip.append(node('i','bi bi-file-earmark-text'),name,node('small','',size));
       const remove = node('button','','×'); remove.type = 'button'; remove.disabled = busy; remove.setAttribute('aria-label',`${t('remove')}: ${file.name}`);
       remove.addEventListener('click',() => { if (!busy) { files.splice(index,1); consent.checked = false; clearError(); updateFiles(); } }); chip.append(remove); region.append(chip);
     });
+    if (focusedIndex >= 0) {
+      const next = region.querySelectorAll('button')[Math.min(focusedIndex,files.length-1)];
+      (busy ? input : next || attachButton).focus({preventScroll:true});
+    }
   }
   function attach(incoming) {
     if (busy || mode === 'guide') return;
@@ -456,7 +478,7 @@
     try {
       const notes = await notesApi('');
       if (version !== libraryVersion) return;
-      if (!notes.length) { showLibraryMessage('notesEmpty'); return; }
+      if (!notes.length) { showLibraryMessage('notesEmpty','status'); return; }
       const list = node('ul','tutor-note-list');
       notes.forEach(note => {
         const item = node('li');
@@ -512,11 +534,18 @@
   }
 
   function setBusy(value) {
+    const submitButton = form.querySelector('[type="submit"]');
+    const stopButton = root.querySelector('[data-ai-action="stop"]');
+    const active = document.activeElement;
+    if ((value && (active === submitButton || active === attachButton)) || (!value && active === stopButton)) {
+      input.focus({preventScroll:true});
+    }
     busy = value;
     messages.setAttribute('aria-busy',String(value));
-    form.querySelector('[type="submit"]').disabled = value;
-    root.querySelector('[data-ai-action="stop"]').hidden = !value;
+    submitButton.disabled = value;
+    stopButton.hidden = !value;
     input.readOnly = value;
+    attachButton.disabled = value;
     fileInput.disabled = value;
     root.querySelectorAll('[data-ai-mode]').forEach(button => button.disabled = value);
     updateFiles();
@@ -550,7 +579,9 @@
     const pending = appendMessage(t(pendingKey),'assistant');
     pending.classList.add('tutor-pending');
     pending.querySelector('.tutor-message-copy').dataset.aiLabel = pendingKey;
-    pending.setAttribute('role','status');
+    pending.setAttribute('aria-hidden','true');
+    progress.dataset.aiLabel = pendingKey;
+    progress.textContent = t(pendingKey);
     const timeout = setTimeout(() => requestController.abort('timeout'),90000);
     try {
       const {mode,message,history,language,fileConsent} = attempt;
@@ -589,8 +620,9 @@
       clearTimeout(timeout);
       pending.remove();
       if (id === sequence) {
+        delete progress.dataset.aiLabel;
+        progress.textContent = '';
         setBusy(false);
-        if (!panel.hidden && library.hidden) input.focus({preventScroll:true});
       }
     }
   }
@@ -640,6 +672,7 @@
   input.addEventListener('input',() => { clearError(); updateCount(); });
   consent.addEventListener('change',clearError);
   input.addEventListener('keydown',event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) submit(event); });
+  attachButton.addEventListener('click',() => fileInput.click());
   fileInput.addEventListener('change',() => { attach([...fileInput.files]); fileInput.value = ''; });
   const drop = root.querySelector('[data-ai-drop]');
   drop.addEventListener('dragover',event => { event.preventDefault(); if (!busy) drop.classList.add('is-dragging'); });
@@ -651,9 +684,12 @@
     if (action === 'close') close();
     if (action === 'library') switchLibrary(library.hidden);
     if (action === 'backToChat') switchLibrary(false);
-    if (action === 'expand') panel.classList.toggle('tutor-expanded');
+    if (action === 'expand') event.target.closest('[data-ai-action]').setAttribute('aria-pressed',String(panel.classList.toggle('tutor-expanded')));
     if (action === 'stop') controller?.abort('user');
-    if (action === 'retry' && lastFailure && !busy) sendAttempt(lastFailure);
+    if (action === 'retry' && lastFailure && !busy) {
+      input.focus({preventScroll:true});
+      sendAttempt(lastFailure);
+    }
     if (action === 'clear') {
       sequence++;
       controller?.abort('clear');
@@ -662,6 +698,8 @@
       files = [];
       consent.checked = false;
       messages.replaceChildren();
+      delete progress.dataset.aiLabel;
+      progress.textContent = '';
       guideShown = false;
       input.value = '';
       updateCount();
@@ -672,14 +710,18 @@
       input.focus();
     }
   });
-  root.querySelector('[role="tablist"]').addEventListener('keydown',event => {
-    if (!['ArrowRight','ArrowLeft','Home','End'].includes(event.key) || busy) return;
-    event.preventDefault(); let index = modes.indexOf(mode);
-    index = event.key === 'Home' ? 0 : event.key === 'End' ? modes.length-1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + modes.length) % modes.length;
-    chooseMode(modes[index]); root.querySelector(`[data-ai-mode="${modes[index]}"]`).focus();
+  root.querySelector('[role="radiogroup"]').addEventListener('keydown',event => {
+    if (!['ArrowRight','ArrowLeft','ArrowDown','ArrowUp','Home','End'].includes(event.key) || busy) return;
+    event.preventDefault();
+    const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? modes.length-1 : (modes.indexOf(mode) + direction + modes.length) % modes.length;
+    chooseMode(modes[index]);
+    root.querySelector(`[data-ai-mode="${modes[index]}"]`).focus();
   });
-  document.addEventListener('keydown',event => {
-    if (event.key !== 'Escape' || panel.hidden) return;
+  root.addEventListener('keydown',event => {
+    if (event.key !== 'Escape' || panel.hidden || event.defaultPrevented) return;
+    event.preventDefault();
+    event.stopPropagation();
     if (!library.hidden) switchLibrary(false);
     else close();
   });

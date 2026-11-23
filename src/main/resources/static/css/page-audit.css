@@ -1,0 +1,191 @@
+/* Keep secondary screens usable when text and native selects grow. */
+:where([data-page="courses"], [data-page="profile"]) .form-heading > div,
+.course-detail-intro > div,
+.course-detail-main,
+.course-detail-side,
+.course-detail-layout > *,
+.project-detail-header > div,
+.assignment-calendar,
+.list-surface,
+.project-task-form label,
+.project-task-filters label,
+.project-task-controls,
+.friends-search form > input,
+.friends-filters input[type="search"] {
+  min-width: 0;
+}
+
+.course-detail-intro > div,
+[data-page="courses"] .news-article,
+.course-detail-teacher,
+.course-detail-task-copy,
+.lesson-row :is(button, small),
+.course-card h3,
+.teacher-line > span:last-child,
+.course-description,
+.form-heading > div,
+.project-detail-members li > span:not(.project-member-icon),
+.project-members > span,
+.project-invitation strong,
+.user-name,
+.user-email,
+.assignment-title,
+.settings-session > div,
+[data-report-list] {
+  overflow-wrap: anywhere;
+}
+
+.body-link {
+  text-decoration: underline;
+  text-underline-offset: .15em;
+}
+
+.form-breadcrumb {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+.form-breadcrumb > :is(a, i) {
+  flex-shrink: 0;
+}
+
+.course-chip {
+  display: inline-block;
+  max-width: min(180px, 100%);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.assignment-table .table-subline,
+.course-table-wrap .table-subline {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:where(.course-card-footer, .page-intro-actions, .form-actions, .assignment-view-tabs, .calendar-toolbar, .project-add form, .project-task-controls) {
+  flex-wrap: wrap;
+}
+
+.course-detail-layout > *,
+.project-task-form :is(input, select),
+.project-task-filters :is(input, select),
+.friends-filters input[type="search"] {
+  max-width: 100%;
+}
+
+.form-grid-two > .field-group {
+  min-width: 0;
+}
+
+[data-task-form][hidden] {
+  display: none;
+}
+
+.list-feedback {
+  margin: 14px 20px;
+}
+
+.project-feedback:empty {
+  margin: 0;
+}
+
+.assignment-calendar {
+  overflow: visible;
+}
+
+.assignment-calendar-scroll {
+  max-width: 100%;
+  overflow: auto;
+  padding: 3px;
+  scroll-padding: 3px;
+}
+
+.assignment-calendar-scroll .calendar-day-number,
+.assignment-calendar-scroll .calendar-task {
+  opacity: 1;
+}
+
+.assignment-calendar-scroll .calendar-day.is-today .calendar-day-number {
+  color: var(--page);
+}
+
+@media (max-width: 700px) {
+  .project-task-filters label:has(select) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .project-task-filters select {
+    width: 100%;
+  }
+
+  .assignment-calendar .calendar-navigation {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 500px) {
+  .project-task-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .project-add form > button {
+    width: 100%;
+  }
+
+  .friends-search, .friends-list {
+    padding: 16px;
+  }
+
+  .friends-actions {
+    padding-inline-start: 0;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .user-table-wrap .user-table,
+  .user-table-wrap tbody,
+  .user-table-wrap tbody tr,
+  .user-table-wrap tbody td {
+    display: block;
+    width: 100%;
+  }
+
+  .user-table-wrap thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .user-table-wrap tbody tr {
+    padding: 12px 16px;
+    border-block-end: 1px solid var(--border);
+  }
+
+  .user-table-wrap .app-table tbody td {
+    min-width: 0;
+    padding: 5px 0;
+    border: 0;
+  }
+
+  .user-table-wrap tbody td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted);
+    font-size: .75rem;
+    margin-bottom: 4px;
+  }
+
+  .settings-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .settings-nav button {
+    min-width: 0;
+    padding-inline: 8px;
+    overflow-wrap: anywhere;
+  }
+}

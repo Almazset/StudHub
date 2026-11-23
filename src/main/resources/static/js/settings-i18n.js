@@ -294,7 +294,7 @@
       }
     });
     if (root.id === 'uiMessages') root.getAttributeNames().filter(name => name.startsWith('data-')).forEach(name => root.setAttribute(name,translateText(root.getAttribute(name))));
-    if (root.matches('time[datetime]')) {
+    if (root.matches('time[datetime]') && !root.firstElementChild) {
       const date = new Date(root.getAttribute('datetime') + 'T12:00:00');
       if (!Number.isNaN(date.getTime())) root.textContent = new Intl.DateTimeFormat(language,{day:'numeric',month:'short'}).format(date);
     }
