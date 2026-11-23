@@ -314,11 +314,7 @@ body[data-theme="light"] .sidebar-link.active { background:#fffefd; border-color
 body[data-theme="light"] .sidebar-link.active > .bi { color:#6c4785; }
 body[data-theme="light"] .sidebar-link:hover { background:#f6f3ef; border-color:#c9c2b9; color:var(--ink); }
 body[data-theme="light"] .topbar { background:#faf8f5; border-bottom:1px solid var(--border); }
-body[data-theme="light"] .topbar-actions .icon-button,
-body[data-theme="light"] .topbar-actions [data-panel-trigger="search"],
-body[data-theme="light"] .topbar-profile { background:#fffefd; color:var(--ink); border:1px solid #c9c2b9; box-shadow:0 2px 5px #32281f0c; }
-body[data-theme="light"] .topbar-actions .icon-button:hover,
-body[data-theme="light"] .topbar-profile:hover { background:#eeebe6; border-color:#a69e94; }
+
 body[data-theme="light"] :is(.surface,.stat-card,.deadline-rail,.settings-card,.course-card,.form-card) { border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow); }
 body[data-theme="light"] .stat-card { background:linear-gradient(145deg,#fffefd,#f9f6f1); }
 body[data-theme="light"] .stat-icon { background:#eee5f3; color:#6c4785; }
@@ -417,28 +413,34 @@ body :is(.btn, .icon-button, .notification-settings-link, .popover-action, .filt
 body .topbar-actions .icon-button,
 body .mobile-menu,
 body .topbar-profile {
-  background: var(--surface);
-  border: 1px solid var(--control-border);
-  color: var(--ink);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--muted) 17%, transparent);
+  color: var(--muted);
   border-radius: var(--radius-control);
-}
-
-body[data-theme="light"] :is(.topbar-actions .icon-button, .mobile-menu, .topbar-profile) {
-  border-color: var(--control-border);
+  box-shadow: none;
 }
 
 body .topbar-actions .icon-button:hover,
 body .topbar-profile:hover,
 body .mobile-menu:hover {
-  background: var(--surface-soft);
-  color: var(--ink);
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+  border-color: color-mix(in srgb, var(--muted) 28%, transparent);
+  color: color-mix(in srgb, var(--muted) 70%, var(--ink));
 }
 
-body .topbar-actions [data-panel-trigger][aria-expanded="true"] {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
+body .topbar-actions [data-panel-trigger][aria-expanded="true"],
+body .mobile-menu[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+  border-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  color: var(--ink);
   box-shadow: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body .topbar :is(.icon-button, .mobile-menu, .topbar-profile) {
+    transition: background-color 180ms ease-out, border-color 180ms ease-out,
+      color 180ms ease-out, transform 120ms ease-out;
+  }
 }
 
 body .topbar-left,
