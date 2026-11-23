@@ -84,3 +84,43 @@
 .project-history{padding-left:22px}.project-history li{padding:10px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}.project-invitation{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:16px 0;border-bottom:1px solid var(--border)}.project-task-filters input[type=date]{padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink)}
 
 .lesson-row{display:flex;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border)}.lesson-row button:first-child{flex:1;text-align:left;overflow-wrap:anywhere}.lesson-editor{display:grid;gap:14px;margin-top:18px}.lesson-editor label{display:grid;gap:6px}.lesson-editor input,.lesson-editor textarea{width:100%;padding:12px;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:10px}[data-lesson-reader]{margin-top:24px;padding-top:20px;border-top:1px solid var(--border);scroll-margin-top:100px}
+
+/* Give project sections a consistent gutter and keep actions beside their context. */
+.project-detail {
+  --project-space: clamp(14px, 2vw, 22px);
+  --project-control-edge: color-mix(in srgb, var(--muted) 80%, var(--surface));
+}
+.project-detail > .project-detail-section,
+.project-detail > .project-detail-grid { margin-block-start: var(--project-space); }
+.project-detail-grid { gap: var(--project-space); }
+.project-state { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; }
+.project-state > strong { margin-inline-end: auto; }
+.project-state > p { flex-basis: 100%; margin: 0; }
+.project-detail .project-form { padding: 0; }
+.project-management form[data-project-edit] {
+  padding-block-end: var(--project-space);
+  border-block-end: 1px solid var(--border);
+}
+.project-detail :is(.project-description, .project-detail-header .muted-copy) { margin-bottom: 0; }
+.project-detail :is(.project-detail-members, .project-history) li:last-child { border-bottom: 0; }
+.project-detail .project-task-filters label:has(input[type=date]) { display: grid; }
+.project-detail :is(.project-form, .project-task-form, .project-task-filters, .project-task-controls)
+  :is(input:not([type=checkbox]), select, textarea) {
+  min-height: 42px;
+  min-width: 0;
+  border: 1px solid var(--project-control-edge);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background-color: var(--surface);
+  color: var(--ink);
+}
+.project-detail :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.project-task-form { grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr)); }
+.project-task-form > button { align-self: end; }
+.project-detail [id] { scroll-margin-block-start: 90px; }
+@media (max-width: 500px) {
+  .project-detail .project-task-form { grid-template-columns: minmax(0, 1fr); }
+}
